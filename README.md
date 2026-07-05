@@ -12,6 +12,7 @@
 - **五種底圖**：街道圖（OSM）、衛星影像、地形圖、深色圖
 - **點選測站彈出詳細資訊**：整合氣象、雨量、日射量觀測於同一視窗
 - **行動裝置友善**：控制面板、圖例與雷達控制盒皆可縮小／展開，窄螢幕自動縮小並限制面板寬度；控制面板可切換靠左／靠右（⇄ 按鈕，偏好自動記憶）；地圖放大時標示緩慢縮放避免重疊
+- **海象自動監控儀表板**：提供資料浮標與潮位站的即時健康監控，具備 KPI 狀態卡（正常、延遲、離線、警報中）與警報日誌，點擊測站可載入並展示 48 小時內各海象觀測指標之歷史時序圖表（Chart.js）
 - **金鑰安全**：API 授權碼僅儲存於使用者瀏覽器（localStorage，可選），不會上傳
 
 ## 資料來源
@@ -23,19 +24,22 @@
 | [O-A0059-001](https://opendata.cwa.gov.tw/dataset/observation/O-A0059-001) | 雷達整合回波網格（dBZ，921×921）） | 檔案型 fileapi |
 | [O-B0045-001](https://opendata.cwa.gov.tw/dataset/observation/O-B0045-001) |雷達估計降雨 QPESUMS 網格（mm，441×561） | 檔案型 fileapi |
 | [O-A0001-001](https://opendata.cwa.gov.tw/dataset/observation/O-A0001-001) | 自動氣象站逐時觀測資料（逐時地圖） | REST datastore API |
+| [O-B0075-001](https://opendata.cwa.gov.tw/dataset/observation/O-B0075-001) | 海象自動監控觀測資料 | REST datastore API |
+| [O-B0076-001](https://opendata.cwa.gov.tw/dataset/observation/O-B0076-001) | 海象自動監控測站基本資料 | 檔案型 fileapi |
 
 資料皆來自[中央氣象署氣象資料開放平臺](https://opendata.cwa.gov.tw/)。
 
 ## 使用方式
 1. 至[氣象署開放資料平臺](https://opendata.cwa.gov.tw/user/authkey)免費註冊會員並取得 API 授權碼（格式 `CWA-XXXXXXXX-...`）
-2. 開啟網頁https://chichawang.github.io/CWAdataVIS/ ，選擇「逐 10 分鐘觀測」或「逐時觀測 × 格點分析」地圖，輸入授權碼即可進入
+2. 開啟網頁https://chichawang.github.io/CWAdataVIS/ ，選擇「逐 10 分鐘觀測」、「逐時觀測 × 格點分析」或「即時海象監控」地圖/儀表板，輸入授權碼即可進入
 3. 勾選「記住金鑰」可儲存於瀏覽器，下次直接載入
 
 ## 檔案結構
 ```
-├── index.html                        # 首頁（入口連結，可選擇逐 10 分鐘或逐時地圖）
+├── index.html                        # 首頁（入口連結，可選擇各觀測地圖/儀表板）
 ├── CWA_opendata_10min_display.html   # 逐 10 分鐘觀測地圖（單一檔案，含 HTML/CSS/JS）
 ├── CWA_opendata_hourly_display.html  # 逐時觀測 × 格點分析地圖（單一檔案，含 HTML/CSS/JS）
+├── CWA_opendata_marine_display.html  # 海象自動監控儀表板（單一檔案，含 HTML/CSS/JS）
 └── README.md
 ```
 
