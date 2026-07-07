@@ -283,7 +283,7 @@ const VARS=[
   {key:"AirTemperature",label:"氣溫",unit:"°C",levels:TEMP_LEVELS,colors:TEMP_COLORS,get:s=>num(s.WeatherElement?.AirTemperature)},
   {key:"Precipitation",label:"日累積雨量",unit:"mm",levels:RAIN_LEVELS,colors:RAIN_COLORS,get:s=>rget(s)},
   {key:"WindVector",label:"風向＋風速（箭號）",unit:"m/s",ramp:RAMP.wind,wind:true,get:s=>num(s.WeatherElement?.WindSpeed)},
-  {key:"RelativeHumidity",label:"相對濕度",unit:"%",ramp:RAMP.humid,get:s=>num(s.WeatherElement?.RelativeHumidity)},
+  {key:"RelativeHumidity",label:"相對溼度",unit:"%",ramp:RAMP.humid,get:s=>num(s.WeatherElement?.RelativeHumidity)},
   {key:"AirPressure",label:"氣壓",unit:"hPa",ramp:RAMP.pres,get:s=>num(s.WeatherElement?.AirPressure)},
   {key:"PeakGustSpeed",label:"最大陣風",unit:"m/s",ramp:RAMP.wind,get:s=>num(s.WeatherElement?.GustInfo?.PeakGustSpeed)},
   {key:"WindSpeed",label:"風速",unit:"m/s",ramp:RAMP.wind,get:s=>num(s.WeatherElement?.WindSpeed)},
@@ -398,7 +398,7 @@ function buildPopup(s,v,val,color){
     ${row("海拔",(geo.StationAltitude||"—")+" m")}
     <div style="border-top:1px solid var(--line);margin:6px 0 4px;padding-top:5px;color:#9fb0c8;font-size:11px">逐時氣象觀測 (O-A0001-001)</div>`
     +row("天氣",NA(we.Weather)?"—":we.Weather)
-    +row("氣溫 / 濕度",(num(we.AirTemperature)??"—")+"°C / "+(num(we.RelativeHumidity)??"—")+"%")
+    +row("氣溫 / 溼度",(num(we.AirTemperature)??"—")+"°C / "+(num(we.RelativeHumidity)??"—")+"%")
     +row("日累積雨量",(rget(s)??"—")+" mm")
     +row("風速 / 風向",(num(we.WindSpeed)??"—")+" m/s / "+(num(we.WindDirection)??"—")+"°")
     +row("最大陣風",(num(we.GustInfo?.PeakGustSpeed)??"—")+" m/s")
