@@ -68,10 +68,8 @@
   .fbox .bhead .btitle{flex:1;font-size:12px;font-weight:700}
   .fbox.collapsed{padding:8px 10px}
   .fbox.collapsed .bbody{display:none}
-  #gridBox{bottom:22px;left:12px;width:215px}
   input[type=range]{padding:0;height:22px;background:transparent;border:none;accent-color:var(--accent)}
   #gridLegend{margin-top:8px}
-  @media(max-width:520px){#gridBox{width:180px}}
 
   /* 面板靠左 / 靠右 */
   .panel.dockright{left:auto;right:12px}
@@ -160,6 +158,10 @@
     <option value="temp">小時溫度分析 (O-A0038-003)</option>
     <option value="rain">日累積雨量分析 (O-A0040-004)</option>
   </select>
+  <div id="gridOpWrap" style="display:none">
+    <label style="margin-top:6px">格點圖層透明度 <span id="gridOpV">70%</span></label>
+    <input type="range" id="gridOp" min="0" max="100" value="70">
+  </div>
   <label>海象 / 閃電 / 颱風監測（點位圖層）</label>
   <label class="ckrow"><input type="checkbox" id="tideChk"> 🌕 大潮監測 (O-B0069-001) ◆</label>
   <label class="ckrow"><input type="checkbox" id="swellChk"> 🌊 長浪監測 (O-B0070-001) ▲</label>
@@ -175,6 +177,8 @@
     <button id="reload">↻ 重新整理</button>
     <button class="ghost" id="fit">⤢ 重置視角</button>
   </div>
+  <label class="ckrow"><input type="checkbox" id="autoChk"> 🔄 自動更新（每 2 分鐘）</label>
+  <span class="chip" id="autoStat" style="display:none;margin-top:5px"></span>
   <div class="btns">
     <button class="ghost" id="changeKey">🔑 更換金鑰</button>
   </div>
@@ -199,27 +203,17 @@
   <div class="ticks" id="legTicks"></div>
   <div id="legNote" style="font-size:11px;color:var(--muted);margin-top:7px;display:none"></div>
   <div class="na"><span class="dot"></span> 無觀測值 / 缺測</div>
-  </div><!-- /lbody -->
-</div>
-
-<!-- 格點圖層控制（左下） -->
-<div class="fbox" id="gridBox">
-  <div class="bhead">
-    <div class="btitle">🌡️ 格點分析圖層</div>
-    <button type="button" class="mini" id="gridBoxToggle" title="縮小 / 展開">−</button>
-  </div>
-  <div class="bbody">
-    <label>透明度 <span id="gridOpV">70%</span></label>
-    <input type="range" id="gridOp" min="0" max="100" value="70" style="width:100%">
-    <span class="chip" id="gridStat">未啟用</span>
+  <!-- 格點分析圖層資訊與游標讀值（由左下資訊盒移入） -->
+  <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px">
+    <div style="font-size:11px;color:var(--muted);font-weight:600">🌡️ 格點分析圖層</div>
+    <span class="chip" id="gridStat" style="margin-top:4px">未啟用</span>
     <span class="chip" id="gridTime"></span>
-    <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:7px">
-      <div style="font-size:12px;font-weight:700">📍 游標 / 點擊讀值</div>
-      <div id="posLL" style="font-size:13px;font-weight:700;margin-top:4px">—</div>
-      <div id="posVal" style="font-size:13px;margin-top:2px;color:var(--muted)">（未啟用格點圖層）</div>
-    </div>
+    <div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:6px">📍 游標 / 點擊讀值</div>
+    <div id="posLL" style="font-size:13px;font-weight:700;margin-top:4px">—</div>
+    <div id="posVal" style="font-size:13px;margin-top:2px;color:var(--muted)">（未啟用格點圖層）</div>
     <div id="gridLegend"></div>
   </div>
+  </div><!-- /lbody -->
 </div>
 
 <script>
@@ -342,7 +336,7 @@ function wgs84(s){
   return(isFinite(la)&&isFinite(lo))?[la,lo]:null;
 }
 
-async function load(){
+async function load(fit=true){
   if(!KEY){openGate();return;}
   $("loader").style.display="flex";
   try{
@@ -358,7 +352,7 @@ async function load(){
     $("obsTime").textContent="🕒 資料時間："+(t?new Date(t).toLocaleString("zh-TW"):"—")
       +`（O-A0001-001 ‧ 自動站 ${RAW.length} 站）`;
     stats();
-    render(true);
+    render(fit);
   }catch(e){
     $("info").textContent="載入失敗："+e.message;
     if(!RAW.length){openGate("載入失敗："+e.message);}
@@ -594,13 +588,14 @@ let gridKind="",gridOverlay=null,lastLL=null;
 async function loadGrid(kind){
   gridKind=kind;
   if(gridOverlay){map.removeLayer(gridOverlay);gridOverlay=null;}
+  $("gridOpWrap").style.display=kind?"block":"none";   // 透明度調整條僅在選取格點圖層時顯示
   if(!kind){
     $("gridStat").textContent="未啟用";$("gridTime").textContent="";
     $("gridLegend").innerHTML="";
     updatePosBox(lastLL);
     return;
   }
-  if(!KEY){$("gridSel").value="";gridKind="";openGate();return;}
+  if(!KEY){$("gridSel").value="";gridKind="";$("gridOpWrap").style.display="none";openGate();return;}
   const def=GRID_DEFS[kind];
   if(!gridCache[kind]){
     $("gridStat").textContent="⏳ 下載中（檔案較大，請稍候）…";
@@ -616,7 +611,7 @@ async function loadGrid(kind){
       gridCache[kind]={values:vals,grid:g,time:findGridTime(j)};
     }catch(e){
       $("gridStat").textContent="載入失敗："+e.message+"（可能為瀏覽器 CORS 限制）";
-      if(gridKind===kind){$("gridSel").value="";gridKind="";}
+      if(gridKind===kind){$("gridSel").value="";gridKind="";$("gridOpWrap").style.display="none";}
       return;
     }
   }
@@ -1181,12 +1176,12 @@ function tyParse(j){
     const past=norm(tyK(tc,/analysis_?data/i)).map(f=>({
       raw:f,ll:tyLL(f),ws:tyNum(tyK(f,/max_?wind/i)),
       r15:tyRad(f,/15\s*ms|of_?15/i),r25:tyRad(f,/25\s*ms|of_?25/i),
-      time:tyK(f,/fix_?time/i)
+      time:tyK(f,/fix_?time|^date_?time$/i)
     })).filter(f=>f.ll);
     past.sort((a,b)=>new Date(a.time||0)-new Date(b.time||0));
     const fcst=norm(tyK(tc,/forecast_?data/i)).map(f=>({
       raw:f,ll:tyLL(f),ws:tyNum(tyK(f,/max_?wind/i)),
-      tau:tyNum(tyK(f,/^tau$/i)),
+      tau:tyNum(tyK(f,/^tau$|forecast_?hour/i)),
       r70:tyRad(f,/70\s*percent|probability/i)
     })).filter(f=>f.ll);
     fcst.sort((a,b)=>(a.tau??0)-(b.tau??0));
@@ -1204,9 +1199,9 @@ function tyPopup(cy,f,kind){
   html+=`<div class="row"><span class="k">強度分類</span><span class="big" style="color:${cat.color}">${cat.name}</span></div>`;
   if(kind==="fcst"){
     html+=row("預報時距",f.tau!=null?"+"+f.tau+" 小時":"—")
-      +row("初始時間",tyTime(tyK(fix,/init_?time/i)));
+      +row("初始時間",tyTime(tyK(fix,/init(ial)?_?time/i)));
   }else{
-    html+=row("定位時間",tyTime(tyK(fix,/fix_?time/i)));
+    html+=row("定位時間",tyTime(tyK(fix,/fix_?time|^date_?time$/i)));
   }
   html+=row("近中心最大風速",ws!=null?ws+" m/s":"—")
     +row("最大陣風",gs!=null?gs+" m/s":"—")
@@ -1488,19 +1483,55 @@ map.on("zoomend",()=>{if(RAW.length)render(false);});
 $("varSel").onchange=()=>render(false);
 $("countySel").onchange=()=>render(true);
 $("search").oninput=()=>render(false);
-$("reload").onclick=()=>{
+// 重新抓取所有已啟用圖層的資料；fit=false 時不改變視角與使用者選擇（變數 / 縣市 / 搜尋 / 圖層）
+function refreshAll(fit){
   Object.keys(gridCache).forEach(k=>delete gridCache[k]);
   Object.keys(marineCache).forEach(k=>delete marineCache[k]);
   marineMetaPromise=null;
   lightCache=null;
   tyCache=null;
   typClearCache();
-  load();
+  load(fit);
   if(gridKind)loadGrid(gridKind);
   Object.keys(MARINE_DEFS).forEach(k=>{if($(MARINE_DEFS[k].chk).checked)loadMarine(k,true);});
   if($("lightChk").checked)loadLightning(true);
   if($("tyChk").checked)loadTyphoon(true);
   if($("typChk").checked)loadTyProb(true);
+}
+$("reload").onclick=()=>{
+  refreshAll(true);
+  if(autoTimer){autoNext=Date.now()+AUTO_MS;autoStatUI();}   // 手動更新後重新起算倒數
+};
+// ===== 自動更新：每 2 分鐘重新抓取資料，不更動視角與使用者選擇 =====
+// 以每秒計時器顯示「下次更新倒數」，倒數歸零時執行更新
+const AUTO_MS=120000;                       // 更新間隔：2 分鐘
+let autoTimer=null,autoNext=0,autoLast=null;
+function autoStatUI(){
+  const el=$("autoStat");
+  if(!$("autoChk").checked){el.style.display="none";el.textContent="";return;}
+  el.style.display="block";
+  const remain=Math.max(0,Math.ceil((autoNext-Date.now())/1000));
+  const mm=Math.floor(remain/60),ss=String(remain%60).padStart(2,"0");
+  el.textContent="🔄 自動更新已開啟｜⏳ 下次更新倒數 "+mm+":"+ss
+    +(autoLast?"｜最近更新 "+autoLast.toLocaleTimeString("zh-TW"):"");
+}
+$("autoChk").onchange=e=>{
+  if(e.target.checked){
+    if(!KEY){e.target.checked=false;openGate();return;}
+    autoNext=Date.now()+AUTO_MS;
+    autoTimer=setInterval(()=>{
+      if(Date.now()>=autoNext){
+        autoNext=Date.now()+AUTO_MS;        // 先排定下一輪，再執行更新
+        if(KEY){refreshAll(false);autoLast=new Date();}   // 不重置視角、不更動任何選擇
+      }
+      autoStatUI();
+    },1000);
+    autoStatUI();
+  }else{
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+    autoLast=null;
+    autoStatUI();
+  }
 };
 $("fit").onclick=()=>{$("countySel").value="";$("search").value="";map.fitBounds(TAIWAN);render(false);};
 $("baseSel").onchange=e=>{map.removeLayer(curBase);curBase=BASES[e.target.value].addTo(map);curBase.bringToBack();};
@@ -1516,9 +1547,8 @@ function bindCollapse(boxId,btnId){
 }
 bindCollapse("panel","panelToggle");
 bindCollapse("legend","legToggle");
-bindCollapse("gridBox","gridBoxToggle");
 if(window.innerWidth<=520){
-  [["legend","legToggle"],["gridBox","gridBoxToggle"]].forEach(([b,t])=>{
+  [["legend","legToggle"]].forEach(([b,t])=>{
     $(b).classList.add("collapsed");$(t).textContent="＋";
   });
 }

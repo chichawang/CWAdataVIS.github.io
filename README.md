@@ -5,9 +5,11 @@
 
 ## 功能特色
 - **多種觀測變數**：氣溫、相對濕度、氣壓、風向風速（箭號圖示）、最大陣風、日最高／最低溫、日照時數、日射量，以及當前／1／3／6／12／24 小時累積雨量
-- **雷達疊加圖層**（10 分鐘地圖）：雷達整合回波（dBZ）與雷達估計降雨（QPESUMS，mm）可疊加於測站標示下層，透明度可調；游標移動或點擊（手機點按）即顯示該點經緯度與回波／雨量數值
-- **格點分析疊加圖層**（逐時地圖）：小時溫度分析與日累積雨量分析格點，透明度可調、支援游標讀值
-- **衛星雲圖疊加圖層**（10 分鐘地圖）：可見光、紅外線色調強化、紅外線彩色衛星雲圖（臺灣區域），依 CWA 產品文件之橫麥卡托投影參數逐像素反投影重採樣，海岸線對位準確，透明度可調
+- **雷達疊加圖層**（10 分鐘地圖）：雷達整合回波（dBZ）與雷達估計降雨（QPESUMS，mm）可疊加於測站標示下層；透明度調整條位於圖層選單下方、僅在選取圖層時顯示；雷達圖層狀態與游標／點擊讀值（經緯度與回波／雨量數值）整合於右下圖例框
+- **格點分析疊加圖層**（逐時地圖）：小時溫度分析與日累積雨量分析格點；透明度調整條位於圖層選單下方、僅在選取圖層時顯示；格點圖層狀態、色階與游標讀值整合於右下圖例框
+- **衛星雲圖疊加圖層**（10 分鐘地圖）：高解析可見光、紅外線色調強化、紅外線彩色衛星雲圖，提供**臺灣**（橫麥卡托投影）與**東亞**（蘭伯特正形圓錐投影）兩種範圍，依 CWA 產品文件之投影參數逐像素反投影重採樣為 Web Mercator，海岸線對位準確；透明度調整條僅在選取雲圖時顯示
+- **自動更新**：勾選後每 2 分鐘自動重新抓取所有已啟用圖層的資料，狀態列即時顯示下次更新倒數與最近更新時間；更新時不重置視角、不更動觀測變數／縣市／搜尋／圖層等使用者選擇（10 分鐘與逐時地圖皆支援）
+- **觀測變數可選「無」**：隱藏所有測站點位與色階，便於單獨檢視雷達、格點、雲圖或颱風圖層
 - **閃電落雷即時觀測**：KMZ（壓縮 KML）於瀏覽器端以 JSZip 解壓解析，標記顏色代表落雷距今時間（0–60 分鐘，越紅越新），並區分雲對地（落雷，實心）與雲間閃電（空心）
 - **颱風路徑與侵襲機率**：熱帶氣旋過去路徑（依 CWA 強度分級上色：青=熱帶性低氣壓、黃綠=輕颱、橙=中颱、粉紅=強颱）、旋轉颱風符號、七級／十級風暴風半徑圈、白點預報路徑與 70% 路徑潛勢圓；120 小時暴風侵襲機率以 CWA 官方離散分級上色（深綠 10-20%→綠→黃→橙→紅 80%+）
 - **海象監測點位**（逐時地圖）：大潮與長浪監測，依警戒狀態上色，測站座標優先取自海象測站基本資料
@@ -32,9 +34,12 @@
 | [O-A0038-003](https://opendata.cwa.gov.tw/dataset/observation/O-A0038-003) | 小時溫度分析格點（0.03°，67×120） | 檔案型 fileapi（JSON） |
 | [O-A0040-004](https://opendata.cwa.gov.tw/dataset/observation/O-A0040-004) | 日累積雨量分析格點 | 檔案型 fileapi（JSON） |
 | [O-A0039-001](https://opendata.cwa.gov.tw/dataset/observation/O-A0039-001) | 閃電落雷系統即時觀測資料 | 檔案型 fileapi（KMZ，JSZip 解壓） |
-| [O-B0031-003](https://opendata.cwa.gov.tw/dataset/observation/O-B0031-003) | 可見光衛星雲圖-臺灣（jpg，橫麥卡托投影） | 檔案型 fileapi（JSON → 圖檔） |
-| [O-B0030-003](https://opendata.cwa.gov.tw/dataset/observation/O-B0030-003) | 紅外線色調強化衛星雲圖-臺灣 | 檔案型 fileapi（JSON → 圖檔） |
-| [O-B0028-003](https://opendata.cwa.gov.tw/dataset/observation/O-B0028-003) | 紅外線彩色衛星雲圖-臺灣 | 檔案型 fileapi（JSON → 圖檔） |
+| [O-C0042-008](https://opendata.cwa.gov.tw/dataset/observation/O-C0042-008) | 高解析可見光衛星雲圖-臺灣（橫麥卡托投影） | 檔案型 fileapi（JSON → 圖檔） |
+| [O-C0042-006](https://opendata.cwa.gov.tw/dataset/observation/O-C0042-006) | 高解析紅外線色調強化衛星雲圖-臺灣 | 檔案型 fileapi（JSON → 圖檔） |
+| [O-C0042-002](https://opendata.cwa.gov.tw/dataset/observation/O-C0042-002) | 高解析紅外線彩色衛星雲圖-臺灣 | 檔案型 fileapi（JSON → 圖檔） |
+| [O-B0032-001](https://opendata.cwa.gov.tw/dataset/observation/O-B0032-001) | 高解析可見光衛星雲圖-東亞（蘭伯特正形圓錐投影） | 檔案型 fileapi（JSON → 圖檔） |
+| [O-B0032-004](https://opendata.cwa.gov.tw/dataset/observation/O-B0032-004) | 高解析紅外線色調強化衛星雲圖-東亞 | 檔案型 fileapi（JSON → 圖檔） |
+| [O-B0032-002](https://opendata.cwa.gov.tw/dataset/observation/O-B0032-002) | 高解析紅外線彩色衛星雲圖-東亞 | 檔案型 fileapi（JSON → 圖檔） |
 | [W-C0034-005](https://opendata.cwa.gov.tw/dataset/warning/W-C0034-005) | 颱風消息與警報-熱帶氣旋路徑 | REST datastore API |
 | [W-C0034-003](https://opendata.cwa.gov.tw/dataset/warning/W-C0034-003) | 颱風消息與警報-颱風侵襲機率 | 檔案型 fileapi（KMZ，JSZip 解壓） |
 | [O-B0069-001](https://opendata.cwa.gov.tw/dataset/observation/O-B0069-001) | 大潮監測 | 檔案型 fileapi（JSON） |
@@ -43,7 +48,7 @@
 | [O-B0076-001](https://opendata.cwa.gov.tw/dataset/observation/O-B0076-001) | 海象自動監控測站基本資料 | 檔案型 fileapi（JSON） |
 | [O-A0043-001](https://opendata.cwa.gov.tw/dataset/observation/O-A0043-001) | 向日葵九號衛星頻道03反射率（HDF，實驗性，預設隱藏） | 檔案型 fileapi（JSON → HDF，h5wasm 解析） |
 
-資料皆來自[中央氣象署氣象資料開放平臺](https://opendata.cwa.gov.tw/)。颱風路徑與侵襲機率產品僅於西北太平洋及南海有熱帶氣旋活動／警報期間提供資料；閃電落雷與可見光雲圖於無閃電／夜間時內容可能為空，均屬正常。衛星雲圖與衛星觀測資料之時間欄位為 UTC，頁面顯示時已轉換為台灣時間。
+資料皆來自[中央氣象署氣象資料開放平臺](https://opendata.cwa.gov.tw/)。颱風路徑與侵襲機率產品僅於西北太平洋及南海有熱帶氣旋活動／警報期間提供資料；閃電落雷與可見光雲圖於無閃電／夜間時內容可能為空，均屬正常。衛星雲圖與衛星觀測資料之時間欄位為 UTC，頁面顯示時已轉換為台灣時間。衛星雲圖投影參數（臺灣：橫麥卡托，中央經緯度 121.0E/23.7N；東亞：蘭伯特正形圓錐，中央經緯度 128.5E/0.0N、參考緯度 30N/60N）依 [CWA 衛星雲圖產品說明文件](https://www.cwa.gov.tw/Data/data_catalog/3-7-1.pdf)。
 
 ## 使用方式
 1. 至[氣象署開放資料平臺](https://opendata.cwa.gov.tw/user/authkey)免費註冊會員並取得 API 授權碼（格式 `CWA-XXXXXXXX-...`）
