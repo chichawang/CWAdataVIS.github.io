@@ -284,6 +284,7 @@ select{padding:6px;border-radius:8px;border:1px solid var(--line);background:#0e
         <option value="CI">舒適度指數</option>
         <option value="UVI">紫外線指數</option>
         <option value="WS">風速（蒲福級）</option>
+        <option value="heatrisk">健康：熱傷害指數</option>
         <option value="coldrisk">健康：冷傷害指數</option>
         <option value="tempdiff">健康：溫差提醒指數</option>
       </select>
@@ -315,6 +316,7 @@ select{padding:6px;border-radius:8px;border:1px solid var(--line);background:#0e
       <div class="rowline"><label><input type="checkbox" id="ckTide"> 潮汐點</label></div>
       <div class="rowline"><label><input type="checkbox" id="ckFreak"> 海岸異常波浪（瘋狗浪）</label></div>
       <div class="rowline"><label><input type="checkbox" id="ckPenghu"> 澎湖海水溫預警</label></div>
+      <div class="rowline"><label><input type="checkbox" id="ckWaveCur"> 波流模式（浴場/漁港/海釣點）</label></div>
     </div>
     <div class="sect collapsed">
       <div class="st"><span class="dot" style="background:#a78bfa"></span>格點預報</div>
@@ -410,6 +412,8 @@ const DS = {
   overview:'F-C0044-001',  // 臺灣天氣概況
   longM  : 'F-A0013-001', longS:'F-A0013-002',          // 長期展望
   sun    : 'A-B0062-001',  // 日出日沒時刻-全臺各縣市年度逐日資料 fileapi
+  heat5  : 'M-A0085-001',  // 熱傷害指數及警示 全臺鄉鎮五日逐3小時 fileapi
+  wavecur: 'M-B0078-001',  // 海水浴場/休閒漁港/海釣 波流模式預報 fileapi
 };
 /* 抽屜影像圖資（fileapi → ProductURL） */
 const IMG_SETS = {
@@ -528,7 +532,7 @@ const S = {
   key:'', map:null, base:null,
   land:'T', sea:'wave', grid:'none', wxIcon:false,
   blue:false, blueVar:'wave',
-  pts:{leisure:false, tide:false, freak:false, penghu:false},
+  pts:{leisure:false, tide:false, freak:false, penghu:false, wavecur:false},
   leisureOn:new Set(['port','forest']),
   t:0,                     // 時間軸索引
   steps:[],                // Date[] 主時間軸（3h × 7 天）
@@ -777,9 +781,9 @@ function legendScale(key,title){
 }
 function renderLegend(){
   const b=$('lgBody'); const blocks=[];
-  const landNames={T:'溫度',AT:'體感溫度',PoP:'降雨機率',RH:'相對溼度',Wx:'天氣現象',CI:'舒適度',UVI:'紫外線指數',WS:'風速(蒲福)',coldrisk:'冷傷害指數',tempdiff:'溫差提醒指數'};
+  const landNames={T:'溫度',AT:'體感溫度',PoP:'降雨機率',RH:'相對溼度',Wx:'天氣現象',CI:'舒適度',UVI:'紫外線指數',WS:'風速(蒲福)',coldrisk:'冷傷害指數',tempdiff:'溫差提醒指數',heatrisk:'熱傷害指數'};
   if(S.land!=='none'){
-    let key=S.land==='AT'?'T':(S.land==='coldrisk'||S.land==='tempdiff')?'risk':S.land;
+    let key=S.land==='AT'?'T':(S.land==='coldrisk'||S.land==='tempdiff'||S.land==='heatrisk')?'risk':S.land;
     let body = S.land==='Wx'
       ? `<div class="lg-cats"><span><i style="background:#ffb300"></i>晴</span><span><i style="background:#90a4ae"></i>多雲</span><span><i style="background:#607d8b"></i>陰</span><span><i style="background:#42a5f5"></i>雨</span><span><i style="background:#5c6bc0"></i>雷雨</span><span><i style="background:#bdbdbd"></i>霧</span></div>`
       : legendScale(key,'');
@@ -795,6 +799,7 @@ function renderLegend(){
   if(S.pts.tide) blocks.push(`<div class="lg-block"><div class="lt">🌊 潮汐點（↑漲 ↓退）</div><div class="lv">${S.valid.tide||''}</div></div>`);
   if(S.pts.freak) blocks.push(`<div class="lg-block"><div class="lt">🌊 瘋狗浪風險</div>${legendScale('risk')}<div class="lv">${S.valid.freak||''}</div></div>`);
   if(S.pts.penghu) blocks.push(`<div class="lg-block"><div class="lt">🐟 澎湖海水溫預警</div><div class="lv">${S.valid.penghu||''}</div></div>`);
+  if(S.pts.wavecur) blocks.push(`<div class="lg-block"><div class="lt">🌊 波流模式（點色＝浪高）</div>${legendScale('wave')}<div class="lv">${S.valid.wavecur||''}</div></div>`);
   if(S.grid!=='none') blocks.push(`<div class="lg-block"><div class="lt">🌧️ 1小時降雨預報</div>${legendScale('rain')}<div class="lv">${S.valid.grid||''}</div></div>`);
   b.innerHTML = blocks.length?blocks.join(''):'<div class="lg-block" style="border:none;margin:0;padding:0"><span class="lv">尚無啟用圖層</span></div>';
 }
@@ -972,7 +977,7 @@ async function _loadLand(){
   try{
     await loadTopo();
     if(!LAND.sun) await loadSun();   // 日出日沒（供 Wx 圖示區分白天太陽／夜間月亮）
-    if(S.land==='coldrisk'||S.land==='tempdiff'){ await loadHealth(S.land); }
+    if(S.land==='coldrisk'||S.land==='tempdiff'||S.land==='heatrisk'){ await loadHealth(S.land); }
     else{
       if(!LAND.town3){
         LAND.town3=await loadD0047Set(0); LAND.byCounty=null;
@@ -1041,8 +1046,8 @@ function parseC0032(json){
 async function loadHealth(kind){
   if(LAND.health[kind]) return;
   setStatus('載入健康氣象指數…');
-  const id3=kind==='coldrisk'?DS.healthCold3:DS.healthDiff3;
-  const id5=kind==='coldrisk'?DS.healthCold5:DS.healthDiff5;
+  const id3=kind==='coldrisk'?DS.healthCold3:kind==='tempdiff'?DS.healthDiff3:null;
+  const id5=kind==='coldrisk'?DS.healthCold5:kind==='tempdiff'?DS.healthDiff5:null;
   const out={};
   const ingest=(json)=>{
     const locs=deepFind(json,o=>o&&typeof o==='object'&&!Array.isArray(o)&&
@@ -1071,8 +1076,13 @@ async function loadHealth(kind){
       if(arr.length){ out[county+name]={name,county,arr}; out[name]=out[county+name]; }
     }
   };
-  try{ ingest(await apiDatastore(id3,{},TTL.town)); }catch(e){ console.warn(id3,e); }
-  try{ ingest(await apiDatastore(id5,{},TTL.town)); }catch(e){ console.warn(id5,e); }
+  if(kind==='heatrisk'){
+    /* 熱傷害：M-A0085-001（fileapi，全臺鄉鎮五日逐3小時） */
+    try{ ingest(await apiFile(DS.heat5, TTL.town)); }catch(e){ console.warn(DS.heat5,e); }
+  }else{
+    try{ ingest(await apiDatastore(id3,{},TTL.town)); }catch(e){ console.warn(id3,e); }
+    try{ ingest(await apiDatastore(id5,{},TTL.town)); }catch(e){ console.warn(id5,e); }
+  }
   if(!Object.keys(out).length){ toast('健康氣象資料無法解析或目前無資料'); }
   LAND.health[kind]=out;
 }
@@ -1082,10 +1092,14 @@ function healthColor(rec,t){
   for(const it of rec.arr){ if(it.s<=t&&t<it.e) {best=it;break;} const d=Math.abs(it.s-t); if(d<bd){bd=d;best=it;} }
   if(!best) return '#5a647555';
   const w=best.txt||'';
-  if(/紅|高/.test(w)) return '#ef4444';
-  if(/橙|橘/.test(w)) return '#fb923c';
+  if(/紅|高危險|危險/.test(w)) return '#ef4444';
+  if(/橙|橘|高/.test(w)) return '#fb923c';
   if(/黃|注意|提醒/.test(w)) return '#facc15';
-  if(best.v!=null && best.v>=2) return '#fb923c';
+  if(/警戒/.test(w)) return '#fb923c';
+  if(best.v!=null){
+    if(S.land==='heatrisk') return best.v>=35?'#ef4444':best.v>=30?'#fb923c':best.v>=26?'#facc15':'#4ade80';
+    if(best.v>=2) return '#fb923c';
+  }
   return '#4ade80';
 }
 /* 渲染陸地面量（含縣市/鄉鎮 LOD 與 Wx 圖示層） */
@@ -1097,9 +1111,9 @@ function renderLand(){
   S.valid.land='';
   if(S.land==='none'||!LAND.topoTown){ renderLegend(); return; }
   const t=curTime(); const zoom=S.map.getZoom();
-  const useCounty = zoom<9 && !(S.land==='coldrisk'||S.land==='tempdiff');
+  const useCounty = zoom<9 && !(S.land==='coldrisk'||S.land==='tempdiff'||S.land==='heatrisk');
   const op=(+$('opLand').value)/100;
-  const isHealth = S.land==='coldrisk'||S.land==='tempdiff';
+  const isHealth = S.land==='coldrisk'||S.land==='tempdiff'||S.land==='heatrisk';
   const healthData=LAND.health[S.land];
   const dataFor=(p)=>{
     const county=normName(p.COUNTYNAME||''), town=normName(p.TOWNNAME||'');
@@ -1254,7 +1268,8 @@ async function openLandPopup(props, latlng){
   html+=`<div class="cards" id="ppCards"></div>`;
   const hRec=(LAND.health.coldrisk&&(LAND.health.coldrisk[key]||LAND.health.coldrisk[town]))||null;
   const dRec=(LAND.health.tempdiff&&(LAND.health.tempdiff[key]||LAND.health.tempdiff[town]))||null;
-  if(hRec||dRec) html+=`<div id="ppHealth" class="sm"></div>`;
+  const heatRec=(LAND.health.heatrisk&&(LAND.health.heatrisk[key]||LAND.health.heatrisk[town]))||null;
+  if(hRec||dRec||heatRec) html+=`<div id="ppHealth" class="sm"></div>`;
   if(isCounty&&recC){ const wxNow=valAt(recC,'Wx',curTime());
     html+=`<details><summary>縣市 36 小時預報摘要</summary><div id="ppC36" class="sm"></div></details>`; }
   const region=REGION4[county];
@@ -1312,6 +1327,8 @@ async function openLandPopup(props, latlng){
         if(b) items.push(`❄️ 冷傷害：${b.txt||('指數 '+b.v)}`); }
       if(dRec){ let b=null,bd=Infinity; for(const it of dRec.arr){const d=Math.abs(it.s-t); if(d<bd){bd=d;b=it;}}
         if(b) items.push(`🌡️ 溫差提醒：${b.txt||('指數 '+b.v)}`); }
+      if(heatRec){ let b=null,bd=Infinity; for(const it of heatRec.arr){const d=Math.abs(it.s-t); if(d<bd){bd=d;b=it;}}
+        if(b) items.push(`🥵 熱傷害：${b.txt||('指數 '+b.v)}`); }
       ph.innerHTML=items.join('<br>'); }
     /* 縣市 36h 摘要 */
     const pc=Q('#ppC36');
@@ -1467,7 +1484,7 @@ function renderSea(){
     if(S.sea==='wave'){ const it=valAt2(rec,'WH',t); if(it){fill=it.v!=null?scaleColor('wave',it.v):'#5a647533'; tip+=`：浪高 ${it.txt||it.v+' m'}`; anyTime=anyTime||it;} }
     else if(S.sea==='wind'){ const it=valAt2(rec,'WS',t); if(it){fill=it.v!=null?scaleColor('WS',it.v):'#5a647533'; tip+=`：風 ${it.txt||it.v+' 級'}`; anyTime=anyTime||it;} }
     else { const it=valAt2(rec,'Wx',t); if(it){fill=wxColor(it.code); tip+=`：${it.txt}`; anyTime=anyTime||it;} }
-    geom.setStyle({color:'#38bdf8',weight:1,opacity:.5,fillColor:fill,fillOpacity:op,dashArray:'4 3'});
+    geom.setStyle({color:'#da70d6',weight:1.0,opacity:.95,fillColor:fill,fillOpacity:op,dashArray:'4 3'});
     geom.bindTooltip(tip,{sticky:true,className:'pt-lab'});
     geom.on('click',()=>openSeaPopup(rec,geom.getBounds?geom.getBounds().getCenter():geom.getLatLng()));
     geom.addTo(SEA.layer);
@@ -2103,6 +2120,7 @@ const PTS = {
   leisure:{data:{},layer:null,loading:new Set()},
   freak:{data:null,layer:null,loading:false},
   penghu:{data:null,layer:null,loading:false},
+  wavecur:{data:null,layer:null,loading:false},
 };
 
 /* ── 潮汐（datastore；座標可能缺 → 以鄉鎮中心備援） ─────────────────── */
@@ -2628,6 +2646,119 @@ function openKvPopup(title,sub,kv,latlng){
 }
 
 /* =========================================================================
+   波流模式預報：M-B0078-001（海水浴場／休閒漁港／海釣點，fileapi）
+   結構具彈性解析：地點節點（名稱＋座標）→ 時間節點（DataTime/Time）→
+   以欄位名稱關鍵字擷取浪高／波向／週期／流速／流向／海溫
+   ========================================================================= */
+function wcPickNum(kv,res){ for(const k in kv){ const kl=k.toLowerCase();
+  if(res.some(r=>r.test(kl))){ const v=num(kv[k]); if(v!=null) return v; } } return null; }
+function wcPickTxt(kv,res){ for(const k in kv){ const kl=k.toLowerCase();
+  if(res.some(r=>r.test(kl))){ const t=String(kv[k]??'').trim(); if(t&&t!=='null'&&t!=='-') return t; } } return null; }
+async function loadWaveCur(){
+  if(PTS.wavecur.data||PTS.wavecur.loading) return; PTS.wavecur.loading=true;
+  try{
+    setStatus('載入波流模式預報（M-B0078-001）…');
+    const j=await apiFile(DS.wavecur, TTL.blue);
+    const out=[];
+    const locs=deepFind(j,o=>o&&typeof o==='object'&&!Array.isArray(o)&&
+      pick(o,['LocationName','locationName','StationName','stationName','Name','SpotName'])!==undefined&&
+      pick(o,['Time','time','Forecast','forecast','HourlyForecast','WeatherElement','weatherElement','Data','data'])!==undefined);
+    for(const loc of locs){
+      const name=normName(String(pick(loc,['LocationName','locationName','StationName','stationName','Name','SpotName'])||'')); if(!name) continue;
+      let lat=num(pick(loc,['Latitude','latitude','lat'])), lon=num(pick(loc,['Longitude','longitude','lon']));
+      /* 時間節點：含時間欄位且非地點節點本身 */
+      const tnodes=deepFind(loc,x=>x&&typeof x==='object'&&!Array.isArray(x)&&x!==loc&&
+        typeof pick(x,['DataTime','dataTime','StartTime','startTime','Time','time'])==='string');
+      const arr=[];
+      for(const tn of tnodes){
+        const ts=parseCwaTime(pick(tn,['DataTime','dataTime','StartTime','startTime','Time','time'])); if(!ts) continue;
+        const kv={};
+        const collect=(x,pfx,d)=>{ if(d>3||x==null) return;
+          if(Array.isArray(x)){ x.slice(0,20).forEach(v=>collect(v,pfx,d+1)); return; }
+          if(typeof x==='object'){ for(const k in x) collect(x[k],k,d+1); return; }
+          if(kv[pfx]===undefined&&Object.keys(kv).length<40) kv[pfx]=x; };
+        collect(tn,'',0);
+        const wh=wcPickNum(kv,[/waveh|sigh|^hs$|示性波|浪高|波高/]);
+        const wd=wcPickTxt(kv,[/wavedir|波向/]);
+        const wp=wcPickNum(kv,[/period|週期|周期/]);
+        const cs=wcPickNum(kv,[/currentspeed|curspd|流速/]);
+        const cd=wcPickTxt(kv,[/currentdir|流向/]);
+        const st=wcPickNum(kv,[/seatemp|^sst|水溫|海溫/]);
+        if(wh==null&&cs==null&&st==null) continue;
+        arr.push({s:ts,wh,wd,wp,cs,cd,st,kv});
+      }
+      arr.sort((a,b)=>a.s-b.s);
+      if(!arr.length) continue;
+      if(lat==null||lon==null){ const c=await resolveCoord(name); if(c){ lat=c[0]; lon=c[1]; } }
+      if(lat==null||lon==null) continue;
+      out.push({name,lat,lon,arr,
+        kind:/浴場|海灘|沙灘/.test(name)?'beach':/漁港|碼頭|港/.test(name)?'port':'fish'});
+    }
+    const seen=new Set();
+    PTS.wavecur.data=out.filter(x=>{ if(seen.has(x.name)) return false; seen.add(x.name); return true; });
+    if(!PTS.wavecur.data.length) toast('波流模式資料解析不到點位，請回報 CWA_DEBUG["M-B0078-001"] 內容');
+    else setStatus(`波流模式點載入完成（${PTS.wavecur.data.length} 點）`);
+  }catch(e){ if(e.message!=='401') toast('波流模式載入失敗：'+e.message); }
+  finally{ PTS.wavecur.loading=false; }
+}
+function wcAt(p,t){ let b=null,bd=Infinity;
+  for(const it of p.arr){ const d=Math.abs(it.s-t); if(d<bd){ bd=d; b=it; } } return b; }
+const WC_ICO={beach:'🏖️',port:'⚓',fish:'🎣'};
+function renderWaveCur(){
+  if(PTS.wavecur.layer){ S.map.removeLayer(PTS.wavecur.layer); PTS.wavecur.layer=null; }
+  S.valid.wavecur='';
+  if(!S.pts.wavecur||!PTS.wavecur.data){ renderLegend(); return; }
+  const t=curTime(); PTS.wavecur.layer=L.layerGroup();
+  for(const p of PTS.wavecur.data){
+    const b=wcAt(p,t); if(!b) continue;
+    const col=b.wh!=null?scaleColor('wave',b.wh):'#5a6475';
+    const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'pt-ico',
+      html:`<div class="pt-ico" style="width:24px;height:24px;background:${col}dd">${WC_ICO[p.kind]}</div>`,iconSize:[24,24]})});
+    mk.bindTooltip(`${p.name}${b.wh!=null?`：浪高 ${b.wh} m`:''}${b.cs!=null?`｜流速 ${b.cs} m/s`:''}`,
+      {className:'pt-lab',direction:'top'});
+    mk.on('click',()=>openWaveCurPopup(p));
+    mk.addTo(PTS.wavecur.layer);
+  }
+  PTS.wavecur.layer.addTo(S.map);
+  const p0=PTS.wavecur.data[0];
+  if(p0&&p0.arr.length) S.valid.wavecur=`${fmtT(p0.arr[0].s)} ～ ${fmtT(p0.arr[p0.arr.length-1].s)}（就近對齊時間軸）`;
+  renderLegend();
+}
+function openWaveCurPopup(p){
+  const t=curTime(); const b=wcAt(p,t);
+  const rows=[];
+  if(b){
+    if(b.wh!=null) rows.push(['浪高',b.wh+' m']);
+    if(b.wd) rows.push(['波向',b.wd]);
+    if(b.wp!=null) rows.push(['波週期',b.wp+' s']);
+    if(b.cs!=null) rows.push(['流速',b.cs+' m/s']);
+    if(b.cd) rows.push(['流向',b.cd]);
+    if(b.st!=null) rows.push(['海溫',b.st+' °C']);
+  }
+  let html=`<div class="pp"><h3>${WC_ICO[p.kind]} ${p.name} 波流預報</h3>`+
+    `<div class="sm">M-B0078-001 波流模式${b?`｜顯示時刻 ${fmtT(b.s)}（就近對齊）`:''}</div>`+
+    `<canvas id="ppWc" height="150"></canvas>`+
+    `<table>${rows.map(([k,v])=>`<tr><td style="text-align:left">${k}</td><td>${v}</td></tr>`).join('')}</table></div>`;
+  const pop=L.popup({maxWidth:380}).setLatLng([p.lat,p.lon]).setContent(html).openOn(S.map);
+  const Q=sel=>{ const r=pop.getElement(); return r?r.querySelector(sel):null; };
+  setTimeout(()=>{ try{
+    const el=Q('#ppWc'); if(!el||!p.arr.length) return;
+    const seq=p.arr.slice(0,72);
+    if(S.popChart){ S.popChart.destroy(); S.popChart=null; }
+    S.popChart=new Chart(el,{data:{labels:seq.map(x=>`${x.s.getDate()}日${pad(x.s.getHours())}時`),datasets:[
+      {type:'line',label:'浪高 m',data:seq.map(x=>x.wh),borderColor:'#38bdf8',backgroundColor:'#38bdf830',
+        yAxisID:'y',tension:.3,pointRadius:0,borderWidth:2,fill:true,spanGaps:true},
+      {type:'line',label:'流速 m/s',data:seq.map(x=>x.cs),borderColor:'#4ade80',
+        yAxisID:'y1',tension:.3,pointRadius:0,borderWidth:1.5,spanGaps:true},
+    ]},options:{responsive:true,animation:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#9fb0c8',boxWidth:10,font:{size:10}}}},
+      scales:{x:{ticks:{color:'#9fb0c8',font:{size:9},maxTicksLimit:8},grid:{color:'#2a3a5744'}},
+        y:{ticks:{color:'#38bdf8',font:{size:9}},grid:{color:'#2a3a5744'}},
+        y1:{position:'right',ticks:{color:'#4ade80',font:{size:9}},grid:{display:false}}}}});
+  }catch(err){ console.error('popup',err); } },60);
+}
+
+/* =========================================================================
    格點層：F-B0046-001 QPESUMS 未來 1 小時定量降雨預報（canvas overlay）
    格網假設同 O-B0045：441×561、左下 (118E,20N)、解析度 0.0125°
    ========================================================================= */
@@ -2804,8 +2935,7 @@ async function loadOverviewFrame(){
       return `<div class="sm">內文無法於頁面內載入，請<a href="${escapeHtml(url)}" target="_blank" rel="noopener">點此開啟原始公報</a>。</div>`;
     }
   }
-  const texts=extractTexts(j);
-  return texts.length? texts.map(t=>`<p>${escapeHtml(t)}</p>`).join('') : '目前無資料';
+  return '目前無資料（可能目前無天氣概況公報）';
 }
 async function renderDrawerTab(tab){
   const body=$('dwBody');
@@ -2819,14 +2949,14 @@ async function renderDrawerTab(tab){
   }else if(tab==='long'){
     body.innerHTML='<div class="txtdoc"><h4>📅 月長期天氣展望（F-A0013-001）</h4><div id="dwLongM">載入中…</div></div>'+
       '<div class="txtdoc"><h4>📆 季長期天氣展望（F-A0013-002）</h4><div id="dwLongS">載入中…</div></div>'+
-      '<div class="note" style="padding:0 4px">機率值為「偏低／正常／偏高」三分類百分比；氣候正常值範圍取自過去 30 年統計平均。</div>';
-    apiFile(DS.longM).then(j=>{ const el=$('dwLongM'); if(el) el.innerHTML=renderLongOutlookHTML(j); })
+      '<div class="note" style="padding:0 4px">展望內容為北中南東分區之溫度／雨量三分類機率與文字說明。</div>';
+    apiFile(DS.longM).then(j=>{ const el=$('dwLongM'); if(el) el.innerHTML=renderLongOutlookHTML(j)||'目前無資料'; })
       .catch(()=>{ const el=$('dwLongM'); if(el) el.textContent='載入失敗'; });
-    apiFile(DS.longS).then(j=>{ const el=$('dwLongS'); if(el) el.innerHTML=renderLongOutlookHTML(j); })
+    apiFile(DS.longS).then(j=>{ const el=$('dwLongS'); if(el) el.innerHTML=renderLongOutlookHTML(j)||'目前無資料'; })
       .catch(()=>{ const el=$('dwLongS'); if(el) el.textContent='載入失敗'; });
   }else if(tab==='text'){
     body.innerHTML='<div class="txtdoc"><h4>🗒️ 臺灣天氣概況（F-C0044-001）</h4><div id="dwOv">載入中…</div></div>';
-    loadOverviewFrame().then(html=>{ const el=$('dwOv'); if(el) el.innerHTML=html; })
+    loadOverviewFrame().then(html=>{ const el=$('dwOv'); if(el) el.innerHTML=html||'目前無資料'; })
       .catch(()=>{ const el=$('dwOv'); if(el) el.textContent='載入失敗'; });
   }
 }
@@ -2842,7 +2972,6 @@ $('dwBody').addEventListener('click',e=>{
 });
 document.querySelectorAll('.dw-tab').forEach(b=>b.addEventListener('click',()=>renderDrawerTab(b.dataset.tab)));
 $('btnDrawer').addEventListener('click',()=>{ $('drawer').classList.add('open'); renderDrawerTab('charts'); });
-window.openLongDrawer=()=>{ $('drawer').classList.add('open'); renderDrawerTab('long'); };
 $('dwClose').addEventListener('click',()=>{ $('drawer').classList.remove('open');
   Object.keys(DRAWER.galTimers).forEach(k=>{ clearInterval(DRAWER.galTimers[k]); DRAWER.galTimers[k]=null; }); });
 $('lightbox').addEventListener('click',()=>$('lightbox').style.display='none');
@@ -2868,44 +2997,21 @@ function loadHash(){
     if(h.get('bv')) S.blueVar=h.get('bv');
     (h.get('pts')||'').split(',').filter(Boolean).forEach(k=>{ if(k in S.pts) S.pts[k]=true; });
     if(h.get('lc')) S.leisureOn=new Set(h.get('lc').split(',').filter(Boolean));
-    $('selLand').value=S.land; $('selSea').value=S.sea; $('selGrid').value=S.grid; $('ckWxIcon').checked=S.wxIcon;
+    $('selLand').value=S.land; $('selSea').value=S.sea; $('selGrid').value=S.grid;
     $('ckBlue').checked=S.blue; $('selBlueVar').value=S.blueVar; $('selBlueVar').style.display=S.blue?'':'none';
     $('ckLeisure').checked=S.pts.leisure; $('ckTide').checked=S.pts.tide;
     $('ckFreak').checked=S.pts.freak; $('ckPenghu').checked=S.pts.penghu;
+    $('ckWaveCur').checked=S.pts.wavecur;
     $('leisureChips').style.display=S.pts.leisure?'flex':'none';
-    syncSectCollapse();
   }catch(e){ console.warn('hash',e); }
 }
-function syncSectCollapse(){
-  document.querySelectorAll('.sect').forEach(sect => {
-    const title = sect.querySelector('.st').textContent.trim();
-    if(title.includes("颱風資訊")) {
-      const active = ($('tyChk') && $('tyChk').checked) || ($('typChk') && $('typChk').checked);
-      sect.classList.toggle('collapsed', !active);
-    } else if(title.includes("鄉鎮縣市預報")) {
-      sect.classList.toggle('collapsed', S.land === 'none');
-    } else if(title.includes("海面預報")) {
-      sect.classList.toggle('collapsed', S.sea === 'none');
-    } else if(title.includes("航線預報")) {
-      sect.classList.toggle('collapsed', !S.blue);
-    } else if(title.includes("站點預報")) {
-      const active = S.pts.leisure || S.pts.tide || S.pts.freak || S.pts.penghu;
-      sect.classList.toggle('collapsed', !active);
-    } else if(title.includes("格點預報")) {
-      sect.classList.toggle('collapsed', S.grid === 'none');
-    }
-  });
-}
 function renderAll(){
-  renderLand(); renderSea(); renderBlue(); renderTide(); renderLeisure(); renderFreak(); renderPenghu();
-  if($('tyChk') && $('tyChk').checked) loadTyphoon(true);
-  if($('typChk') && $('typChk').checked) loadTyProb(true);
+  renderLand(); renderSea(); renderBlue(); renderTide(); renderLeisure(); renderFreak(); renderPenghu(); renderWaveCur();
   /* 格點層不隨時間軸重繪（僅 0–1h） */
   renderLegend();
 }
 async function activate(){ // 依目前開關載入必要資料再渲染
   const jobs=[];
-  jobs.push(loadShoreJson());
   if(S.land!=='none') jobs.push(loadLand());
   if(S.sea!=='none') jobs.push(loadSea());
   if(S.blue) jobs.push(loadBlue());
@@ -2913,9 +3019,8 @@ async function activate(){ // 依目前開關載入必要資料再渲染
   if(S.pts.leisure) for(const k of S.leisureOn) jobs.push(loadLeisure(k));
   if(S.pts.freak) jobs.push(loadFreak());
   if(S.pts.penghu) jobs.push(loadPenghu());
+  if(S.pts.wavecur) jobs.push(loadWaveCur());
   if(S.grid!=='none') jobs.push(loadGrid());
-  if($('tyChk') && $('tyChk').checked) jobs.push(loadTyphoon(true));
-  if($('typChk') && $('typChk').checked) jobs.push(loadTyProb(true));
   await Promise.allSettled(jobs);
   renderAll(); if(S.grid!=='none') renderGrid();
 }
@@ -2926,10 +3031,6 @@ $('ckWxIcon').addEventListener('change',e=>{ S.wxIcon=e.target.checked; renderLa
 $('opLand').addEventListener('input',debounce(()=>renderLand(),120));
 $('selSea').addEventListener('change',async e=>{ S.sea=e.target.value; saveHash(); updOpacRows();
   if(S.sea!=='none') await loadSea(); renderSea(); });
-
-$('tyChk').addEventListener('change',async e=>{ await loadTyphoon(e.target.checked, true); });
-$('typChk').addEventListener('change',async e=>{ await loadTyProb(e.target.checked); });
-
 $('opSea').addEventListener('input',debounce(()=>renderSea(),120));
 $('ckBlue').addEventListener('change',async e=>{ S.blue=e.target.checked; saveHash();
   $('selBlueVar').style.display=S.blue?'':'none';
@@ -2941,6 +3042,8 @@ $('ckFreak').addEventListener('change',async e=>{ S.pts.freak=e.target.checked; 
   if(S.pts.freak) await loadFreak(); renderFreak(); });
 $('ckPenghu').addEventListener('change',async e=>{ S.pts.penghu=e.target.checked; saveHash();
   if(S.pts.penghu) await loadPenghu(); renderPenghu(); });
+$('ckWaveCur').addEventListener('change',async e=>{ S.pts.wavecur=e.target.checked; saveHash();
+  if(S.pts.wavecur) await loadWaveCur(); renderWaveCur(); });
 $('ckLeisure').addEventListener('change',async e=>{ S.pts.leisure=e.target.checked; saveHash();
   $('leisureChips').style.display=S.pts.leisure?'flex':'none';
   if(S.pts.leisure){ for(const k of S.leisureOn) await loadLeisure(k); }
@@ -2948,16 +3051,11 @@ $('ckLeisure').addEventListener('change',async e=>{ S.pts.leisure=e.target.check
 $('selGrid').addEventListener('change',async e=>{ S.grid=e.target.value; saveHash(); updOpacRows();
   if(S.grid!=='none'){ await loadGrid(); } renderGrid(); });
 $('opGrid').addEventListener('input',()=>{ if(GRID.layer) GRID.layer.setOpacity((+$('opGrid').value)/100); });
+$('tyChk').addEventListener('change',e=>loadTyphoon(e.target.checked,true));
+$('typChk').addEventListener('change',e=>loadTyProb(e.target.checked));
 $('btnShare').addEventListener('click',()=>{ saveHash();
   navigator.clipboard&&navigator.clipboard.writeText(location.href).then(()=>toast('已複製分享連結',2500)).catch(()=>toast(location.href,8000)); });
 $('btnKey').addEventListener('click',()=>showKeyGate(true));
-
-// 點擊大項標題摺疊/展開
-document.querySelectorAll('.sect > .st').forEach(st => {
-  st.addEventListener('click', () => {
-    st.parentElement.classList.toggle('collapsed');
-  });
-});
 /* 育樂類別 chips */
 function buildLeisureChips(){
   const box=$('leisureChips');
@@ -2974,10 +3072,10 @@ function setupAuto(){
   clearInterval(S.autoTimer);
   if(!$('ckAuto').checked) return;
   S.autoTimer=setInterval(async()=>{
-    for(const url of [...CACHE.keys()]){ if(url.includes('opendata.cwa.gov.tw')) CACHE.delete(url); }
-    LAND.town3=null; LAND.town7=null; LAND.county=null; LAND.health={};
+    for(const url of [...CACHE.keys()]){ if(url.includes('opendata.cwa.gov.tw')||url.includes('cwaopendata')) CACHE.delete(url); }
+    LAND.town3=null; LAND.town7=null; LAND.county=null; LAND.health={}; LAND.byCounty=null;
     SEA.data=null; BLUE.loaded=false; BLUE.data={};
-    PTS.tide.data=null; PTS.leisure.data={}; PTS.freak.data=null; PTS.penghu.data=null; GRID.meta=null;
+    PTS.tide.data=null; PTS.leisure.data={}; PTS.freak.data=null; PTS.penghu.data=null; PTS.wavecur.data=null; GRID.meta=null;
     await activate();
     setStatus('自動更新完成 '+fmtTs(new Date()));
   },10*60e3);
@@ -2993,7 +3091,7 @@ function showKeyGate(force){
 }
 async function boot(){
   buildTimeline(); initMap(); buildLeisureChips(); loadHash(); updateTimeLabel();
-  updOpacRows(); setupAuto(); syncSectCollapse();
+  updOpacRows(); setupAuto();
   await activate();
   setStatus('就緒 '+fmtTs(new Date()));
 }
