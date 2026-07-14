@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地震即時監測儀表板｜顯著有感 × 小區域 3D 地圖</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"/>
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/deck.gl@8.9.36/dist.min.js"></script>
+<style>
+  :root{--bg:#0b1220;--card:#16213a;--line:#2a3a57;--txt:#e6edf6;--muted:#9fb0c8;--accent:#3b82f6;--chip:#1e293b}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;
+    background:var(--bg);color:var(--txt);font-size:14px;overflow:hidden}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+  /* ===== 頂部工具列 ===== */
+  #topbar{flex:0 0 auto;z-index:1500;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;
+    padding:8px 14px;background:rgba(16,24,42,.97);border-bottom:1px solid var(--line)}
+  #topbar h1{font-size:15px;margin:0;white-space:nowrap}
+  #topbar .sub{color:var(--muted);font-size:11px;white-space:nowrap}
+  #topbar .sp{flex:1}
+  #topbar button{padding:7px 10px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600}
+  #topbar button.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+  #topbar button:hover{filter:brightness(1.12)}
+  #obsTime,#countdownTimer{color:var(--muted);font-size:11px;white-space:nowrap}
+  #countdownTimer{color:#5eead4}
+  label.ck{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  label.ck input{accent-color:var(--accent)}
+  #magFilter{width:80px;accent-color:var(--accent)}
+  #depthExg{width:64px;accent-color:var(--accent)}
+
+  /* ===== 左右分割 ===== */
+  #wrap{flex:1;min-height:0;display:flex}
+  #mapPane{flex:1 1 55%;position:relative;min-width:0;display:flex;flex-direction:column}
+  #map{flex:1;position:relative;background:#0b1220;min-height:0}
+  #side{flex:1 1 45%;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;border-left:1px solid var(--line);
+    background:linear-gradient(180deg,#0d1626,#0b1220);padding:14px 16px 30px}
+
+  /* ===== 時間軸 ===== */
+  #timeline{flex:0 0 auto;background:rgba(16,24,42,.97);border-top:1px solid var(--line);padding:8px 14px 10px}
+  #tlHead{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  #tlHead .t{font-size:11px;font-weight:700;color:var(--muted)}
+  #tlHead button{padding:3px 10px;background:var(--chip);border:1px solid var(--line);color:var(--txt);
+    border-radius:6px;font-size:11px;cursor:pointer}
+  #tlHead button.on{background:var(--accent);border-color:var(--accent)}
+  #tlCursorLbl{font-size:11px;color:#ffd166;font-family:monospace}
+  #tlTrack{position:relative;height:38px;margin:2px 2px 0}
+  #tlTrack .axis{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
+  .tlDot{position:absolute;top:50%;transform:translate(-50%,-50%);border-radius:50%;cursor:pointer;
+    border:1px solid rgba(255,255,255,.35);transition:box-shadow .15s}
+  .tlDot:hover{box-shadow:0 0 8px #fff}
+  .tlDot.sel{outline:2px solid #ffd166;box-shadow:0 0 10px #ffd166}
+  .tlDot.dim{opacity:.18}
+  #tlCursorLine{position:absolute;top:0;bottom:0;width:2px;background:#ffd166;display:none;pointer-events:none}
+  #tlRange{width:100%;margin:2px 0 0;accent-color:#ffd166;height:14px}
+  #tlTicks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:0}
+
+  /* ===== 地圖圖例（錨定於地圖底部＝時間軸上方，不重疊） ===== */
+  .legend{position:absolute;bottom:10px;left:12px;z-index:1000;background:rgba(16,24,42,.94);
+    border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:196px;font-size:10px;color:var(--muted)}
+  .legend .title{font-size:11px;font-weight:700;color:var(--txt);margin-bottom:5px;display:flex;justify-content:space-between;gap:8px;cursor:pointer;user-select:none}
+  .legend #legTgl{transition:transform .2s;color:var(--muted)}
+  .legend.min{width:auto;padding:6px 10px}
+  .legend.min .title{margin-bottom:0}
+  .legend.min #legContent{display:none}
+  .legend.min #legTgl{transform:rotate(-90deg)}
+  .intRow{display:flex;gap:2px;margin-bottom:3px}
+  .intRow span{flex:1;height:13px;border-radius:2px;text-align:center;line-height:13px;font-size:8.5px;color:#0b1220;font-weight:700}
+  .legend .note{line-height:1.55;margin-top:5px}
+
+  /* 地圖右上工具 */
+  #mapTools{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:6px}
+  #mapTools button{padding:6px 9px;background:rgba(16,24,42,.92);border:1px solid var(--line);color:var(--txt);
+    border-radius:7px;font-size:11px;cursor:pointer}
+  #mapTools button:hover{border-color:var(--accent)}
+  #mapTools select{padding:6px 7px;background:rgba(16,24,42,.92);border:1px solid var(--line);color:var(--txt);
+    border-radius:7px;font-size:11px;cursor:pointer;max-width:132px}
+
+  /* ===== KPI ===== */
+  #kpiPane{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .kpi-card{background:rgba(22,33,58,.6);border:1px solid var(--line);border-radius:12px;padding:9px 4px;
+    text-align:center;position:relative;overflow:hidden}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent)}
+  .kpi-card .num{font-size:19px;font-weight:700;margin-top:2px;line-height:1.2}
+  .kpi-card .lbl{font-size:11px;color:var(--muted);margin-top:2px}
+  .kpi-card.k1::before{background:#3b82f6}.kpi-card.k2::before{background:#f59e0b}
+  .kpi-card.k3::before{background:#10b981}.kpi-card.k4::before{background:#ec4899}
+  .kpi-card.k2 .num{color:#f59e0b}.kpi-card.k3 .num{color:#10b981}.kpi-card.k4 .num{color:#ec4899}
+
+  /* ===== 詳情卡 ===== */
+  #detailCard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:12px;display:none}
+  #detailCard h2{margin:0 0 3px;font-size:16px;line-height:1.4}
+  #detailCard .meta{color:var(--muted);font-size:11.5px;margin-bottom:8px;line-height:1.6}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:11px;color:var(--muted)}
+  .chip b{display:block;font-size:13.5px;color:var(--txt);margin-top:1px}
+  .intChip{display:inline-block;padding:1px 7px;border-radius:5px;font-size:11px;font-weight:700;color:#0b1220;margin:0 2px 2px 0}
+  .areaChips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  #stTable{width:100%;border-collapse:collapse;font-size:11px;margin-top:4px}
+  #stTable th{color:var(--muted);text-align:left;font-weight:600;padding:3px 6px;border-bottom:1px solid var(--line)}
+  #stTable td{padding:3px 6px;border-bottom:1px solid rgba(42,58,87,.5)}
+  #detailCard .links{margin-top:9px;display:flex;gap:8px;flex-wrap:wrap}
+  #detailCard .links a{color:var(--accent);font-size:11.5px;text-decoration:none;border:1px solid var(--line);
+    border-radius:6px;padding:4px 8px}
+  #detailCard .links a:hover{border-color:var(--accent)}
+  #reportImg{max-width:100%;border-radius:8px;border:1px solid var(--line);margin-top:9px;display:none}
+  .secT{font-size:11.5px;font-weight:700;color:var(--muted);margin:9px 0 4px}
+
+  /* ===== 事件列表 ===== */
+  #listHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  #listHead h3{margin:0;font-size:13px}
+  #listHead .n{color:var(--muted);font-size:11px}
+  .evCard{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 12px;margin-bottom:8px;
+    cursor:pointer;transition:border-color .15s,transform .15s;position:relative;overflow:hidden}
+  .evCard::before{content:'';position:absolute;top:0;bottom:0;left:0;width:4px;background:var(--evc,#64748b)}
+  .evCard:hover{border-color:var(--accent);transform:translateX(2px)}
+  .evCard.sel{border-color:#ffd166;box-shadow:0 0 8px rgba(255,209,102,.3)}
+  .evCard.new{animation:newflash 2.4s ease-out}
+  @keyframes newflash{0%{background:#7f1d1d}100%{background:var(--card)}}
+  .evRow1{display:flex;align-items:center;gap:8px}
+  .magBadge{flex:0 0 auto;width:42px;height:42px;border-radius:50%;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:var(--chip);border:2px solid var(--evc,#64748b)}
+  .magBadge .v{font-size:14px;font-weight:800;line-height:1}
+  .magBadge .u{font-size:8px;color:var(--muted)}
+  .evInfo{flex:1;min-width:0}
+  .evInfo .loc{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .evInfo .tm{font-size:11px;color:var(--muted);font-family:monospace}
+  .evInfo .dep{font-size:10.5px;color:var(--muted)}
+  .evRight{flex:0 0 auto;text-align:right}
+  .tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .tag.sig{background:#123f66;color:#7cc7ff}
+  .tag.small{background:#3f2d12;color:#fbbf24}
+  .evRight .rel{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+  #emptyMsg{color:var(--muted);text-align:center;padding:40px 20px;font-size:13px;display:none}
+
+  /* toast */
+  #toast{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:2600;background:#7f1d1d;
+    border:1px solid #ef4444;color:#fecaca;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;
+    display:none;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+
+  #loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(11,18,32,.75);z-index:2500;color:var(--muted);font-size:15px}
+
+  /* ===== API 金鑰畫面 ===== */
+  #gate{position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(1200px 600px at 50% -10%,#12203c,#0b1220)}
+  #gate .box{width:min(430px,calc(100% - 32px));background:var(--card);border:1px solid var(--line);
+    border-radius:16px;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  #gate h1{margin:0 0 4px;font-size:19px}
+  #gate .sub{color:var(--muted);font-size:12px;margin-bottom:16px;line-height:1.5}
+  #gate label{display:block;margin-top:10px;font-size:12px;color:var(--muted)}
+  #gate .keyrow{display:flex;gap:8px}
+  #gate .keyrow input{flex:1;padding:8px 9px;background:#0d1526;color:var(--txt);border:1px solid var(--line);
+    border-radius:7px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  #gate .toggle{flex:0 0 auto;width:44px;padding:7px;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:7px;cursor:pointer}
+  #gate .remember{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:12px;color:var(--muted);cursor:pointer}
+  #gate .remember input{width:auto}
+  #gate .go{width:100%;margin-top:16px;padding:11px;font-size:14px;background:var(--accent);color:#fff;
+    border:none;border-radius:8px;cursor:pointer;font-weight:700}
+  #gate .err{color:#fca5a5;font-size:12px;margin-top:10px;display:none}
+  #gate .hint{color:var(--muted);font-size:11px;margin-top:14px;line-height:1.5}
+  #gate a{color:var(--accent)}
+
+  /* ===== 手機 ===== */
+  @media(max-width:860px){
+    #topbar{padding:6px 10px}
+    #topbar h1{font-size:13.5px}
+    #topbar .sub,#topbar .sp{display:none}
+    #wrap{flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    #mapPane{flex:0 0 auto;height:400px}
+    #side{flex:0 0 auto;overflow-y:visible;height:auto;border-left:none;border-top:1px solid var(--line);padding:10px 10px 24px}
+    .legend{width:150px;padding:7px 9px}
+    #kpiPane{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h1>🔑 CWA 地震即時監測儀表板</h1>
+    <div class="sub">本頁使用中央氣象署（CWA）開放資料：顯著有感地震報告（E-A0015-001）、縣市鄉鎮觀測震度（E-A0015-005）與小區域有感地震報告（E-A0016-001）。請輸入您的 API 授權碼。</div>
+    <label for="keyInput">CWA API 授權碼</label>
+    <div class="keyrow">
+      <input id="keyInput" type="password" placeholder="CWA-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" autocomplete="off" spellcheck="false">
+      <button type="button" class="toggle" id="keyToggle" title="顯示 / 隱藏">👁</button>
+    </div>
+    <label class="remember"><input type="checkbox" id="rememberKey">記住金鑰（僅存於此瀏覽器）</label>
+    <button class="go" id="enterBtn">進入監測地圖</button>
+    <div class="err" id="keyErr"></div>
+    <div class="hint">尚無金鑰？請至 <a href="https://opendata.cwa.gov.tw/user/authkey" target="_blank" rel="noopener">氣象署開放資料平臺</a> 免費申請。金鑰只儲存在您的瀏覽器，不會被上傳到任何伺服器。</div>
+  </div>
+</div>
+
+<div id="topbar">
+  <h1>🌏 地震即時監測</h1>
+  <span class="sub">顯著有感 × 小區域 × 鄉鎮震度｜3D 震源地圖</span>
+  <label class="ck"><input type="checkbox" id="ckSig" checked>顯著有感</label>
+  <label class="ck"><input type="checkbox" id="ckSmall" checked>小區域</label>
+  <label class="ck">規模 ≥ <span id="magVal">4.0</span><input type="range" id="magFilter" min="0" max="6" step="0.1" value="4"></label>
+  <label class="ck">深度放大 <span id="exgVal">3</span>×<input type="range" id="depthExg" min="1" max="8" step="1" value="3"></label>
+  <span class="sp"></span>
+  <button class="ghost" id="soundBtn" title="新地震音效">🔕</button>
+  <span id="countdownTimer"></span>
+  <span id="obsTime"></span>
+  <button id="reload">🔄 立即更新</button>
+  <button class="ghost" id="keyBtn">🔑</button>
+</div>
+
+<div id="wrap">
+  <div id="mapPane">
+    <div id="map">
+      <div id="mapTools">
+        <select id="baseSel" title="更換底圖"></select>
+        <button id="btn3d">2D ⇄ 3D</button>
+        <button id="btnHome">🎯 全臺視角</button>
+        <button id="btnTown">🏘️ 鄉鎮震度</button>
+      </div>
+      <div class="legend" id="legend">
+        <div class="title" onclick="this.parentNode.classList.toggle('min')"><span>震度色階（級）</span><span id="legTgl">▾</span></div>
+        <div id="legContent">
+          <div class="intRow" id="intRowBox"></div>
+          <div class="note">
+            ● 圓點大小 = 芮氏規模，深度沿 Z 軸下沉（可放大倍率）<br>
+            ● 垂直線 = 震源深度；地表圓圈 = 震央<br>
+            ● 點擊事件可檢視各地測站震度
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="timeline">
+      <div id="tlHead">
+        <span class="t">⏳ 時間軸</span>
+        <button id="tlPlay">▶ 播放</button>
+        <button id="tlLive" class="on">● LIVE</button>
+        <span id="tlCursorLbl"></span>
+      </div>
+      <div id="tlTrack"><div class="axis"></div><div id="tlCursorLine"></div></div>
+      <input type="range" id="tlRange" min="0" max="1000" value="1000">
+      <div id="tlTicks"><span id="tk0"></span><span id="tk1"></span><span id="tk2"></span></div>
+    </div>
+  </div>
+
+  <div id="side">
+    <div id="kpiPane">
+      <div class="kpi-card k1"><div class="num" id="kpiTotal">–</div><div class="lbl">顯示中事件</div></div>
+      <div class="kpi-card k2"><div class="num" id="kpiMax">–</div><div class="lbl">最大規模</div></div>
+      <div class="kpi-card k3"><div class="num" id="kpi24">–</div><div class="lbl">24 小時內</div></div>
+      <div class="kpi-card k4"><div class="num" id="kpiLatest">–</div><div class="lbl">最新事件</div></div>
+    </div>
+
+    <div id="detailCard">
+      <h2 id="dTitle"></h2>
+      <div class="meta" id="dMeta"></div>
+      <div class="chips" id="dChips"></div>
+      <div class="secT">各地區最大震度</div>
+      <div class="areaChips" id="dAreas"></div>
+      <div class="secT">測站觀測（依震度排序，前 12 站）</div>
+      <table id="stTable"><thead><tr><th>測站</th><th>震度</th><th>PGA(gal)</th><th>PGV(kine)</th><th>震央距(km)</th></tr></thead><tbody></tbody></table>
+      <div class="links" id="dLinks"></div>
+      <img id="reportImg" alt="地震報告圖" loading="lazy">
+    </div>
+
+    <div id="listHead"><h3>📋 最新地震列表</h3><span class="n" id="listCount"></span></div>
+    <div id="evList"></div>
+    <div id="emptyMsg">目前篩選條件下沒有地震事件</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="loader">⏳ 載入地震資料中…</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const STORE="cwa_quake_key";
+let KEY="";
+
+/* ===================== API ===================== */
+const urlSig  =k=>"https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization="+encodeURIComponent(k);
+const urlSmall=k=>"https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization="+encodeURIComponent(k);
+const urlTown =k=>"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/E-A0015-005?Authorization="+encodeURIComponent(k)+"&downloadType=WEB&format=JSON";
+
+/* ===================== 震度 ===================== */
+const INT_RANK={"0級":0,"1級":1,"2級":2,"3級":3,"4級":4,"5弱":5,"5強":6,"6弱":7,"6強":8,"7級":9};
+const INT_LABEL=["0","1","2","3","4","5弱","5強","6弱","6強","7"];
+const INT_COLOR=["#64748b","#38bdf8","#2dd4bf","#a3e635","#facc15","#fb923c","#f87171","#ef4444","#c026d3","#7e22ce"];
+const INT_RGB=INT_COLOR.map(h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]);
+const rankOf=s=>INT_RANK[String(s||"").trim()]??0;
+
+/* ===================== 狀態 ===================== */
+let EVENTS=[];        // 合併後事件
+let TOWNQ=null;       // E-A0015-005 鄉鎮震度（最新一起顯著地震）
+let selectedKey=null;
+let prevKeys=null;    // 上次載入的事件 key（新事件偵測）
+let newKeys=new Set();
+let tlCursor=null;    // null = LIVE（全部顯示）
+let playing=false, playTimer=null;
+let showTown=true;
+let soundOn=false;
+let curPitch=55, firstLoad=true;
+let deckgl=null;
+
+/* ===================== 工具 ===================== */
+const arr=x=>x==null?[]:(Array.isArray(x)?x:[x]);
+const num=x=>{const v=parseFloat(x);return isFinite(v)?v:null;};
+const pad=n=>String(n).padStart(2,"0");
+function fmtFull(d){return d.getFullYear()+"/"+pad(d.getMonth()+1)+"/"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());}
+function fmtShort(d){return pad(d.getMonth()+1)+"/"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes());}
+function relTime(d){
+  const s=(Date.now()-d.getTime())/1e3;
+  if(s<60)return Math.floor(s)+" 秒前";
+  if(s<3600)return Math.floor(s/60)+" 分鐘前";
+  if(s<86400)return Math.floor(s/3600)+" 小時前";
+  return Math.floor(s/86400)+" 天前";
+}
+
+/* ===================== 解析 ===================== */
+function parseReport(json,type){
+  const out=[];
+  const list=arr(json?.records?.Earthquake);
+  for(const eq of list){
+    const info=eq.EarthquakeInfo||{};
+    const ep=info.Epicenter||{};
+    const t=new Date(info.OriginTime);
+    const lon=num(ep.EpicenterLongitude),lat=num(ep.EpicenterLatitude);
+    if(!isFinite(t)||lon==null||lat==null)continue;
+    const stations=[],areas=[];
+    let maxRank=0;
+    for(const sa of arr(eq.Intensity&&eq.Intensity.ShakingArea)){
+      const aInt=sa.AreaIntensity||sa.CountyMaxIntensity||"";
+      if(sa.AreaDesc)areas.push({desc:sa.AreaDesc,int:aInt,rank:rankOf(aInt)});
+      maxRank=Math.max(maxRank,rankOf(aInt));
+      for(const st of arr(sa.EqStation)){
+        const sLon=num(st.StationLongitude),sLat=num(st.StationLatitude);
+        if(sLon==null||sLat==null)continue;
+        const r=rankOf(st.SeismicIntensity);
+        maxRank=Math.max(maxRank,r);
+        stations.push({name:st.StationName||st.StationID||"?",lon:sLon,lat:sLat,
+          int:st.SeismicIntensity||"?",rank:r,
+          pga:st.pga?num(st.pga.IntScaleValue):null,
+          pgv:st.pgv?num(st.pgv.IntScaleValue):null,
+          dist:num(st.EpicenterDistance)});
+      }
+    }
+    stations.sort((a,b)=>b.rank-a.rank||(b.pga||0)-(a.pga||0));
+    out.push({
+      key:info.OriginTime+"_"+lon.toFixed(2)+"_"+lat.toFixed(2),
+      type, no:eq.EarthquakeNo,
+      t, lon, lat,
+      depth:num(info.FocalDepth)||0,
+      mag:num(info.EarthquakeMagnitude&&info.EarthquakeMagnitude.MagnitudeValue)||0,
+      magType:(info.EarthquakeMagnitude&&info.EarthquakeMagnitude.MagnitudeType)||"芮氏規模",
+      maxRank, loc:(ep.Location||"").replace(/\s+/g," ").trim(),
+      content:eq.ReportContent||"", color:eq.ReportColor||"",
+      web:eq.Web||"", img:eq.ReportImageURI||"", shakemap:eq.ShakemapImageURI||"",
+      stations, areas
+    });
+  }
+  return out;
+}
+
+function parseTown(json){
+  const eq=json?.cwaopendata?.Earthquake;
+  if(!eq)return null;
+  const towns=[];
+  for(const c of arr(eq.Intensity&&eq.Intensity.County)){
+    for(const tn of arr(c.Town)){
+      const lon=num(tn.StationLongitude),lat=num(tn.StationLatitude);
+      if(lon==null||lat==null)continue;
+      towns.push({county:c.CountyName,name:tn.TownName,lon,lat,
+        int:tn.StationIntensity||"0級",rank:rankOf(tn.StationIntensity)});
+    }
+  }
+  return {originTime:eq.OriginTime,t:new Date(eq.OriginTime),
+    lon:num(eq.EpicenterLongitude),lat:num(eq.EpicenterLatitude),towns};
+}
+
+/* ===================== 篩選 ===================== */
+function visibleEvents(){
+  const sig=$("ckSig").checked, small=$("ckSmall").checked;
+  const minMag=parseFloat($("magFilter").value)||0;
+  return EVENTS.filter(e=>
+    (e.type==="sig"?sig:small)&&e.mag>=minMag&&(tlCursor==null||e.t.getTime()<=tlCursor));
+}
+
+/* ===================== 底圖 ===================== */
+const rasterStyle=(tiles,attr,maxzoom)=>({version:8,
+  sources:{r:{type:"raster",tiles:[tiles],tileSize:256,attribution:attr,maxzoom:maxzoom||19}},
+  layers:[{id:"r",type:"raster",source:"r"}]});
+const BASEMAPS={
+  dark:   {label:"🌑 暗色（預設）",style:"https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"},
+  light:  {label:"⬜ 亮色 Positron",style:"https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"},
+  voyager:{label:"🗺️ 街道 Voyager",style:"https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"},
+  sat:    {label:"🛰️ 衛星影像",style:rasterStyle(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}","Esri",18)},
+  osm:    {label:"🌍 OSM 標準",style:rasterStyle(
+    "https://tile.openstreetmap.org/{z}/{x}/{y}.png","© OpenStreetMap",19)}
+};
+const BASE_STORE="cwa_quake_base";
+let curBase="dark";
+try{const b=localStorage.getItem(BASE_STORE);if(b&&BASEMAPS[b])curBase=b;}catch(e){}
+
+/* ===================== 3D 地圖 ===================== */
+const TW_VIEW={longitude:121.1,latitude:23.7,zoom:6.6,pitch:55,bearing:-8};
+function initMap(){
+  const sel=$("baseSel");
+  sel.innerHTML=Object.entries(BASEMAPS).map(([k,v])=>
+    `<option value="${k}"${k===curBase?" selected":""}>${v.label}</option>`).join("");
+  sel.onchange=()=>{
+    curBase=sel.value;
+    try{localStorage.setItem(BASE_STORE,curBase);}catch(e){}
+    deckgl.setProps({mapStyle:BASEMAPS[curBase].style});
+  };
+  deckgl=new deck.DeckGL({
+    container:"map",
+    map:maplibregl,
+    mapStyle:BASEMAPS[curBase].style,
+    initialViewState:{...TW_VIEW},
+    controller:{touchRotate:true,inertia:250},
+    getTooltip:({object,layer})=>{
+      if(!object)return null;
+      let html="";
+      if(layer.id==="towns")
+        html=`<b>${object.county} ${object.name}</b><br>震度 ${object.int}`;
+      else if(layer.id==="stations")
+        html=`<b>測站 ${object.name}</b><br>震度 ${object.int}｜PGA ${object.pga??"–"} gal<br>震央距 ${object.dist??"–"} km`;
+      else
+        html=`<b>M${object.mag.toFixed(1)}</b>｜深度 ${object.depth} km｜最大震度 ${INT_LABEL[object.maxRank]}級<br>${fmtFull(object.t)}<br>${object.loc}`;
+      return {html,style:{background:"#16213a",color:"#e6edf6",fontSize:"11px",
+        border:"1px solid #2a3a57",borderRadius:"8px",padding:"7px 9px",maxWidth:"260px"}};
+    }
+  });
+}
+function flyTo(lon,lat,zoom){
+  deckgl.setProps({initialViewState:{longitude:lon,latitude:lat,zoom:zoom||7.6,
+    pitch:curPitch,bearing:-8,transitionDuration:900,
+    transitionInterpolator:new deck.FlyToInterpolator()}});
+}
+
+let pulsePhase=0;
+setInterval(()=>{pulsePhase=(Date.now()%1800)/1800;if(EVENTS.length)renderLayers();},120);
+
+function renderLayers(){
+  if(!deckgl)return;
+  const evs=visibleEvents();
+  const exg=parseFloat($("depthExg").value)*1000; // km→m × 放大
+  const sel=EVENTS.find(e=>e.key===selectedKey);
+  const newest=evs.length?evs.reduce((a,b)=>a.t>b.t?a:b):null;
+  const layers=[];
+
+  // 震源深度垂直線
+  layers.push(new deck.LineLayer({
+    id:"depthlines",data:evs,pickable:false,
+    getSourcePosition:e=>[e.lon,e.lat,0],
+    getTargetPosition:e=>[e.lon,e.lat,-e.depth*exg],
+    getColor:e=>[...INT_RGB[e.maxRank],e.key===selectedKey?255:130],
+    getWidth:e=>e.key===selectedKey?3:1.6,widthUnits:"pixels",
+    updateTriggers:{getColor:[selectedKey],getWidth:[selectedKey],getTargetPosition:[exg]}
+  }));
+
+  // 震央地表圓圈
+  layers.push(new deck.ScatterplotLayer({
+    id:"epicenters",data:evs,pickable:true,stroked:true,filled:false,
+    getPosition:e=>[e.lon,e.lat,0],
+    getRadius:e=>Math.pow(2,e.mag)*260,
+    getLineColor:e=>[...INT_RGB[e.maxRank],e.key===selectedKey?255:170],
+    getLineWidth:e=>e.key===selectedKey?2.6:1.2,lineWidthUnits:"pixels",
+    updateTriggers:{getLineColor:[selectedKey],getLineWidth:[selectedKey]}
+  }));
+
+  // 最新事件脈衝
+  if(newest&&tlCursor==null){
+    layers.push(new deck.ScatterplotLayer({
+      id:"pulse",data:[newest],pickable:false,stroked:true,filled:false,
+      getPosition:e=>[e.lon,e.lat,0],
+      getRadius:e=>Math.pow(2,e.mag)*260*(1+pulsePhase*1.6),
+      getLineColor:e=>[...INT_RGB[e.maxRank],Math.round(200*(1-pulsePhase))],
+      getLineWidth:2,lineWidthUnits:"pixels",
+      updateTriggers:{getRadius:[pulsePhase],getLineColor:[pulsePhase]}
+    }));
+  }
+
+  // 震源（3D 深度球）
+  layers.push(new deck.ScatterplotLayer({
+    id:"hypocenters",data:evs,pickable:true,stroked:true,
+    getPosition:e=>[e.lon,e.lat,-e.depth*exg],
+    getRadius:e=>Math.pow(2,e.mag)*200,
+    radiusMinPixels:4,radiusMaxPixels:36,
+    getFillColor:e=>[...INT_RGB[e.maxRank],e.key===selectedKey?255:200],
+    getLineColor:e=>e.key===selectedKey?[255,209,102,255]:[255,255,255,90],
+    getLineWidth:e=>e.key===selectedKey?2.5:.8,lineWidthUnits:"pixels",
+    onClick:({object})=>selectEvent(object.key,false),
+    updateTriggers:{getFillColor:[selectedKey],getLineColor:[selectedKey],
+      getLineWidth:[selectedKey],getPosition:[exg]}
+  }));
+
+  // 選取事件的測站震度
+  if(sel&&sel.stations.length){
+    layers.push(new deck.ScatterplotLayer({
+      id:"stations",data:sel.stations,pickable:true,stroked:true,
+      getPosition:s=>[s.lon,s.lat,0],
+      getRadius:s=>800+s.rank*450,radiusMinPixels:3,radiusMaxPixels:16,
+      getFillColor:s=>[...INT_RGB[s.rank],215],
+      getLineColor:[11,18,32,200],getLineWidth:1,lineWidthUnits:"pixels"
+    }));
+  }
+
+  // 鄉鎮震度（E-A0015-005，僅對應事件、震度>0）
+  if(sel&&showTown&&TOWNQ&&TOWNQ.towns.length&&
+     Math.abs(TOWNQ.t-sel.t)<60e3){
+    layers.push(new deck.ScatterplotLayer({
+      id:"towns",data:TOWNQ.towns.filter(t=>t.rank>0),pickable:true,stroked:false,
+      getPosition:t=>[t.lon,t.lat,0],
+      getRadius:t=>600+t.rank*350,radiusMinPixels:2,radiusMaxPixels:12,
+      getFillColor:t=>[...INT_RGB[t.rank],150]
+    }));
+  }
+  deckgl.setProps({layers});
+}
+
+/* ===================== 選取事件 ===================== */
+function selectEvent(key,fly=true){
+  selectedKey=key;
+  const e=EVENTS.find(x=>x.key===key);
+  renderList();renderLayers();
+  if(!e){$("detailCard").style.display="none";return;}
+  if(fly)flyTo(e.lon,e.lat);
+  const d=$("detailCard");d.style.display="block";
+  $("dTitle").textContent=`M${e.mag.toFixed(1)} ${e.loc||"（無位置描述）"}`;
+  $("dMeta").innerHTML=
+    `發震：${fmtFull(e.t)}（${relTime(e.t)}）｜`+
+    `${e.type==="sig"?"顯著有感 第 "+e.no+" 號":"小區域有感（不編號）"}<br>${e.content}`;
+  $("dChips").innerHTML=
+    `<div class="chip">${e.magType}<b>M ${e.mag.toFixed(1)}</b></div>`+
+    `<div class="chip">震源深度<b>${e.depth} km</b></div>`+
+    `<div class="chip">最大震度<b style="color:${INT_COLOR[e.maxRank]}">${INT_LABEL[e.maxRank]} 級</b></div>`+
+    `<div class="chip">震央<b>${e.lat.toFixed(2)}°N, ${e.lon.toFixed(2)}°E</b></div>`;
+  $("dAreas").innerHTML=e.areas.sort((a,b)=>b.rank-a.rank).map(a=>
+    `<span class="intChip" style="background:${INT_COLOR[a.rank]}">${a.desc} ${a.int}</span>`).join("")||"<span style='color:var(--muted);font-size:11px'>無資料</span>";
+  $("stTable").querySelector("tbody").innerHTML=e.stations.slice(0,12).map(s=>
+    `<tr><td>${s.name}</td><td><span class="intChip" style="background:${INT_COLOR[s.rank]}">${s.int}</span></td>`+
+    `<td>${s.pga??"–"}</td><td>${s.pgv??"–"}</td><td>${s.dist??"–"}</td></tr>`).join("");
+  let links="";
+  if(e.web)links+=`<a href="${e.web}" target="_blank" rel="noopener">🔗 氣象署報告頁</a>`;
+  if(e.shakemap)links+=`<a href="${e.shakemap}" target="_blank" rel="noopener">🗺️ 震度圖</a>`;
+  if(e.img)links+=`<a href="${e.img}" target="_blank" rel="noopener">📄 報告圖</a>`;
+  $("dLinks").innerHTML=links;
+  const img=$("reportImg");
+  img.style.display="none";
+  if(e.img){img.src=e.img;img.onload=()=>img.style.display="block";img.onerror=()=>img.style.display="none";}
+  document.querySelector(".evCard.sel")?.scrollIntoView({block:"nearest",behavior:"smooth"});
+}
+
+/* ===================== 右側列表 / KPI ===================== */
+function renderList(){
+  const evs=visibleEvents().slice().sort((a,b)=>b.t-a.t);
+  $("listCount").textContent=evs.length+" 筆";
+  $("emptyMsg").style.display=evs.length?"none":"block";
+  $("evList").innerHTML=evs.map(e=>`
+    <div class="evCard ${e.key===selectedKey?"sel":""} ${newKeys.has(e.key)?"new":""}"
+         style="--evc:${INT_COLOR[e.maxRank]}" data-key="${e.key}">
+      <div class="evRow1">
+        <div class="magBadge"><span class="v">${e.mag.toFixed(1)}</span><span class="u">M</span></div>
+        <div class="evInfo">
+          <div class="loc">${e.loc||e.content.slice(0,30)}</div>
+          <div class="tm">${fmtFull(e.t)}</div>
+          <div class="dep">深度 ${e.depth} km｜最大震度 <span style="color:${INT_COLOR[e.maxRank]};font-weight:700">${INT_LABEL[e.maxRank]} 級</span></div>
+        </div>
+        <div class="evRight">
+          <span class="tag ${e.type}">${e.type==="sig"?"顯著 #"+e.no:"小區域"}</span>
+          <span class="rel">${relTime(e.t)}</span>
+        </div>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".evCard").forEach(c=>c.onclick=()=>selectEvent(c.dataset.key,true));
+
+  const all=visibleEvents();
+  $("kpiTotal").textContent=all.length;
+  $("kpiMax").textContent=all.length?"M"+Math.max(...all.map(e=>e.mag)).toFixed(1):"–";
+  $("kpi24").textContent=all.filter(e=>Date.now()-e.t<864e5).length;
+  $("kpiLatest").textContent=evs.length?relTime(evs[0].t):"–";
+  $("kpiLatest").style.fontSize=evs.length?"14px":"19px";
+}
+
+/* ===================== 時間軸 ===================== */
+function tlSpan(){
+  if(!EVENTS.length)return null;
+  const ts=EVENTS.map(e=>e.t.getTime());
+  const min=Math.min(...ts)-30*6e4, max=Date.now();
+  return {min,max};
+}
+function renderTimeline(){
+  const sp=tlSpan();const track=$("tlTrack");
+  track.querySelectorAll(".tlDot").forEach(d=>d.remove());
+  if(!sp)return;
+  $("tk0").textContent=fmtShort(new Date(sp.min));
+  $("tk1").textContent=fmtShort(new Date((sp.min+sp.max)/2));
+  $("tk2").textContent=fmtShort(new Date(sp.max));
+  const sig=$("ckSig").checked,small=$("ckSmall").checked,minMag=parseFloat($("magFilter").value)||0;
+  for(const e of EVENTS){
+    if(!(e.type==="sig"?sig:small)||e.mag<minMag)continue;
+    const x=(e.t.getTime()-sp.min)/(sp.max-sp.min)*100;
+    const sz=6+e.mag*2.4;
+    const d=document.createElement("div");
+    d.className="tlDot"+(e.key===selectedKey?" sel":"")+
+      (tlCursor!=null&&e.t.getTime()>tlCursor?" dim":"");
+    d.style.cssText=`left:${x}%;width:${sz}px;height:${sz}px;background:${INT_COLOR[e.maxRank]}`;
+    d.title=`M${e.mag.toFixed(1)} ${fmtFull(e.t)}\n${e.loc}`;
+    d.onclick=()=>selectEvent(e.key,true);
+    track.appendChild(d);
+  }
+  const line=$("tlCursorLine");
+  if(tlCursor!=null){
+    line.style.display="block";
+    line.style.left=((tlCursor-sp.min)/(sp.max-sp.min)*100)+"%";
+    $("tlCursorLbl").textContent="⏱ "+fmtFull(new Date(tlCursor));
+  }else{line.style.display="none";$("tlCursorLbl").textContent="";}
+}
+function setCursor(t){ // t=null → LIVE
+  tlCursor=t;
+  $("tlLive").classList.toggle("on",t==null);
+  if(t==null)$("tlRange").value=1000;
+  else{const sp=tlSpan();if(sp)$("tlRange").value=Math.round((t-sp.min)/(sp.max-sp.min)*1000);}
+  renderTimeline();renderList();renderLayers();
+}
+$("tlRange").addEventListener("input",()=>{
+  stopPlay();
+  const sp=tlSpan();if(!sp)return;
+  const v=+$("tlRange").value;
+  setCursor(v>=1000?null:sp.min+(sp.max-sp.min)*v/1000);
+});
+$("tlLive").onclick=()=>{stopPlay();setCursor(null);};
+function stopPlay(){playing=false;clearInterval(playTimer);$("tlPlay").textContent="▶ 播放";$("tlPlay").classList.remove("on");}
+$("tlPlay").onclick=()=>{
+  if(playing){stopPlay();return;}
+  const sp=tlSpan();if(!sp)return;
+  playing=true;$("tlPlay").textContent="⏸ 暫停";$("tlPlay").classList.add("on");
+  let cur=(tlCursor==null||tlCursor>=sp.max-1e3)?sp.min:tlCursor;
+  const step=(sp.max-sp.min)/240;               // 約 12 秒播完
+  playTimer=setInterval(()=>{
+    cur+=step;
+    if(cur>=sp.max){setCursor(null);stopPlay();return;}
+    setCursor(cur);
+  },50);
+};
+
+/* ===================== 載入 ===================== */
+let countdownSec=60,countdownTimerId=null;
+function startCountdown(){
+  if(countdownTimerId)clearInterval(countdownTimerId);
+  countdownSec=60;
+  countdownTimerId=setInterval(()=>{
+    countdownSec--;
+    if(countdownSec<=0){clearInterval(countdownTimerId);load(true);}
+    else $("countdownTimer").textContent=`⏱️ ${countdownSec}s 後更新`;
+  },1000);
+}
+
+function beep(){
+  if(!soundOn)return;
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=880;g.gain.setValueAtTime(.25,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.7);
+    o.start();o.stop(ctx.currentTime+.7);
+  }catch(e){}
+}
+function showToast(msg){
+  const t=$("toast");t.textContent=msg;t.style.display="block";
+  clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",6000);
+}
+
+async function load(silent){
+  if(!KEY){openGate();return;}
+  if(!silent)$("loader").style.display="flex";
+  try{
+    const [rSig,rSmall,rTown]=await Promise.allSettled([
+      fetch(urlSig(KEY)).then(r=>{if(!r.ok)throw new Error("E-A0015-001 HTTP "+r.status);return r.json();}),
+      fetch(urlSmall(KEY)).then(r=>{if(!r.ok)throw new Error("E-A0016-001 HTTP "+r.status);return r.json();}),
+      fetch(urlTown(KEY)).then(r=>{if(!r.ok)throw new Error("E-A0015-005 HTTP "+r.status);return r.json();})
+    ]);
+    const errs=[];
+    let evs=[];
+    if(rSig.status==="fulfilled"){
+      if(rSig.value&&rSig.value.success===false)throw new Error("金鑰無效或未授權");
+      evs=evs.concat(parseReport(rSig.value,"sig"));
+    }else errs.push(rSig.reason.message);
+    if(rSmall.status==="fulfilled")evs=evs.concat(parseReport(rSmall.value,"small"));
+    else errs.push(rSmall.reason.message);
+    if(rTown.status==="fulfilled")TOWNQ=parseTown(rTown.value);
+    else errs.push(rTown.reason.message);
+
+    if(!evs.length)throw new Error("查無地震資料"+(errs.length?"（"+errs.join("；")+"）":""));
+
+    // 去重：同 key 以顯著有感優先
+    const map=new Map();
+    for(const e of evs){
+      const old=map.get(e.key);
+      if(!old||(old.type==="small"&&e.type==="sig"))map.set(e.key,e);
+    }
+    EVENTS=[...map.values()].sort((a,b)=>b.t-a.t);
+
+    // 新事件偵測
+    newKeys=new Set();
+    if(prevKeys){
+      for(const e of EVENTS)if(!prevKeys.has(e.key))newKeys.add(e.key);
+      if(newKeys.size){
+        const ne=EVENTS.filter(e=>newKeys.has(e.key)).sort((a,b)=>b.t-a.t)[0];
+        showToast(`🚨 新地震報告：M${ne.mag.toFixed(1)} ${ne.loc}`);
+        beep();
+        if(tlCursor==null)selectEvent(ne.key,true);
+      }
+    }
+    prevKeys=new Set(EVENTS.map(e=>e.key));
+
+    if(selectedKey&&!EVENTS.some(e=>e.key===selectedKey))selectedKey=null;
+    renderTimeline();renderList();renderLayers();
+    if(selectedKey)selectEvent(selectedKey,false);
+    else if(firstLoad&&EVENTS.length)selectEvent(EVENTS[0].key,false);
+
+    $("obsTime").textContent="🕒 最後更新 "+fmtFull(new Date())
+      +`｜顯著 ${EVENTS.filter(e=>e.type==="sig").length}／小區域 ${EVENTS.filter(e=>e.type==="small").length} 筆`
+      +(errs.length?"｜⚠ "+errs.join("；"):"");
+    firstLoad=false;
+    $("loader").style.display="none";
+    startCountdown();
+  }catch(e){
+    $("loader").style.display="none";
+    if(firstLoad){openGate("載入失敗："+e.message);}
+    else{showToast("⚠ 更新失敗："+e.message);startCountdown();}
+  }
+}
+
+/* ===================== UI 事件 ===================== */
+["ckSig","ckSmall"].forEach(id=>$(id).onchange=()=>{renderTimeline();renderList();renderLayers();});
+$("magFilter").oninput=()=>{$("magVal").textContent=(+$("magFilter").value).toFixed(1);
+  renderTimeline();renderList();renderLayers();};
+$("depthExg").oninput=()=>{$("exgVal").textContent=$("depthExg").value;renderLayers();};
+$("reload").onclick=()=>load(false);
+$("btn3d").onclick=()=>{curPitch=curPitch?0:55;
+  deckgl.setProps({initialViewState:{...TW_VIEW,pitch:curPitch,
+    transitionDuration:700,transitionInterpolator:new deck.FlyToInterpolator()}});};
+$("btnHome").onclick=()=>flyTo(TW_VIEW.longitude,TW_VIEW.latitude,TW_VIEW.zoom);
+$("btnTown").onclick=function(){showTown=!showTown;
+  this.style.borderColor=showTown?"var(--accent)":"var(--line)";renderLayers();};
+$("soundBtn").onclick=function(){soundOn=!soundOn;this.textContent=soundOn?"🔔":"🔕";if(soundOn)beep();};
+setInterval(()=>{if(EVENTS.length){renderList();}},30e3); // 相對時間更新
+
+// 圖例色階
+$("intRowBox").innerHTML=INT_LABEL.map((l,i)=>
+  `<span style="background:${INT_COLOR[i]}">${l}</span>`).join("");
+
+/* ===================== 金鑰 ===================== */
+function setKey(k){KEY=k.trim();}
+function openGate(msg){
+  $("gate").style.display="flex";
+  if(msg){$("keyErr").textContent=msg;$("keyErr").style.display="block";}
+  else $("keyErr").style.display="none";
+  const inp=$("keyInput");
+  if(KEY)inp.value=KEY;
+  setTimeout(()=>inp.focus(),50);
+}
+function closeGate(){$("gate").style.display="none";}
+$("keyToggle").onclick=()=>{const i=$("keyInput");i.type=i.type==="password"?"text":"password";};
+$("keyBtn").onclick=()=>openGate();
+function submitKey(){
+  const k=$("keyInput").value.trim();
+  if(!k){$("keyErr").textContent="請輸入 API 授權碼";$("keyErr").style.display="block";return;}
+  setKey(k);
+  if($("rememberKey").checked){try{localStorage.setItem(STORE,k);}catch(e){}}
+  else{try{localStorage.removeItem(STORE);}catch(e){}}
+  closeGate();load(false);
+}
+$("enterBtn").onclick=submitKey;
+$("keyInput").addEventListener("keydown",e=>{if(e.key==="Enter")submitKey();});
+
+/* ===================== 初始化 ===================== */
+(function init(){
+  initMap();
+  let saved="";
+  try{saved=localStorage.getItem(STORE)||localStorage.getItem("cwa_api_key")||
+    localStorage.getItem("cwa_marine_key")||"";}catch(e){}
+  if(saved){$("rememberKey").checked=true;setKey(saved);closeGate();load(false);}
+  else{$("loader").style.display="none";openGate();}
+})();
+</script>
+</body>
+</html>
