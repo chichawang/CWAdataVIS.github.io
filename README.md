@@ -88,9 +88,19 @@
 ## 缺測值處理
 依 CWA 資料標準，`X`（儀器故障）、`-99`（缺值或資料異常）、`None` 等特殊代碼一律視為缺測，於地圖上以灰點呈現。
 
-## 授權與致謝
-- 氣象資料：中央氣象署氣象資料開放平臺（[政府資料開放授權條款](https://data.gov.tw/license)）
-- 颱風路徑與機率產品圖例配色：參考中央氣象署[颱風機率預報產品說明](https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html)與[颱風消息地圖](https://app.cwa.gov.tw/web/obsmap/typhoon.html)
-- 地圖圖磚：© OpenStreetMap contributors、Esri World Imagery、OpenTopoMap、CARTO
-- 地圖套件：Leaflet 1.9.4；KMZ 解壓：JSZip 3.10.1；圖表：Chart.js（海象與地球物理儀表板）；GRIB2 解壓：JSZip（數值預報模式）；海岸線／國界向量：[Natural Earth](https://www.naturalearthdata.com/)（公共領域）
-- 本文件權益為 AGPL-3.0 license
+## 版權與授權宣告
+- **版權所有**：Copyright (c) [2024-2026] 王志嘉. All rights reserved.
+- **開源授權**：本專案之開源版本核心代碼採用 **GNU Affero General Public License v3.0 (AGPL-3.0)** 條款授權。
+- **商業授權**：本專案保留未來提供雙重授權（Dual-licensing）與企業版（Enterprise Edition）之權利。若有閉源整合或 SaaS 商業使用且無法遵守 AGPL-3.0 開源規範之需求，請於github上洽談商業授權。
+
+## 數據與第三方資源致謝
+- **氣象資料**：中央氣象署氣象資料開放平臺（遵循 [政府資料開放授權條款-第1版](https://data.gov.tw/license)）
+- **颱風圖例與配色**：參考中央氣象署 [颱風機率預報產品說明](https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html) 與 [颱風消息地圖](https://app.cwa.gov.tw/web/obsmap/typhoon.html)
+- **地圖圖磚**：© OpenStreetMap contributors、Esri World Imagery、OpenTopoMap、CARTO
+- **海岸線／國界向量**：[Natural Earth](https://www.naturalearthdata.com/)（Public Domain 公共領域）
+
+## 第三方開源元件元件宣告
+本專案使用了以下開源元件，其版權與授權歸原作者所有：
+- **Leaflet 1.9.4** (BSD 2-Clause License)
+- **JSZip 3.10.1** (MIT License / GPLv3)
+- **Chart.js** (MIT License)
