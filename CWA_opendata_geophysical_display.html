@@ -176,6 +176,8 @@
     </div>
     <label class="remember"><input type="checkbox" id="rememberKey"> 記住金鑰（儲存在此瀏覽器）</label>
     <button class="go" id="enterBtn">進入儀表板 →</button>
+    <button type="button" class="go" id="demoBtn" style="margin-top:8px;background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:400">🧪 使用測試金鑰試用</button>
+    <div class="hint">測試金鑰為官方公開的共用範例金鑰，可能隨時失效或被限流；正式使用請申請個人金鑰。</div>
     <div class="err" id="keyErr"></div>
     <div class="hint">尚無金鑰？可至
       <a href="https://opendata.cwa.gov.tw/user/authkey" target="_blank" rel="noopener">氣象署開放資料平臺</a>
@@ -190,9 +192,9 @@
   <select id="mapVarSel" title="地圖著色變數"></select>
   <select id="stSel" title="選擇測站"><option value="">— 選擇測站 —</option></select>
   <select id="baseSel" title="選擇底圖">
-    <option value="dark" selected>深色底圖</option>
+    <option value="dark">深色底圖</option>
     <option value="sat">衛星影像</option>
-    <option value="osm">街道圖 (OSM)</option>
+    <option value="osm" selected>街道圖 (OSM)</option>
     <option value="topo">地形圖</option>
     <option value="light">淺色底圖</option>
   </select>
@@ -580,7 +582,7 @@ const BASES={
   topo:L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{maxZoom:17,attribution:"© OpenTopoMap ‧ 資料：中央氣象署"}),
   light:L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{maxZoom:20,attribution:"© CARTO © OpenStreetMap ‧ 資料：中央氣象署"})
 };
-let curBase=BASES.dark.addTo(map);
+let curBase=BASES.osm.addTo(map);
 const layerG=L.layerGroup().addTo(map);
 let markers={},selectedId=null;
 
@@ -863,6 +865,11 @@ function submitKey(){
   closeGate();load(true);
 }
 $("enterBtn").onclick=submitKey;
+$("demoBtn").onclick=()=>{
+  $("keyInput").value="rdec-key-123-45678-011121314";
+  $("rememberKey").checked=false;
+  submitKey();
+};
 $("keyInput").addEventListener("keydown",e=>{if(e.key==="Enter")submitKey();});
 
 /* ===================== 診斷面板 ===================== */

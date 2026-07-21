@@ -265,6 +265,8 @@ select{padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.12);back
     <input type="text" id="keyInput" placeholder="CWA-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" autocomplete="off">
     <label><input type="checkbox" id="keyRemember" checked> 記住金鑰（localStorage）</label>
     <button id="keyGo">進入地圖</button>
+    <button id="keyDemo" style="margin-top:8px;background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:400;font-size:13px">🧪 使用測試金鑰試用</button>
+    <div class="note" style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">測試金鑰為官方公開的共用範例金鑰，可能隨時失效或被限流；正式使用請至上方連結免費申請個人金鑰。</div>
     <div class="err" id="keyErr">金鑰驗證失敗，請確認授權碼是否正確。</div>
   </div>
 </div>
@@ -338,9 +340,9 @@ select{padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.12);back
     <div class="sect collapsed">
       <div class="st">🗺️ 底圖類型</div>
       <select id="selBase">
-        <option value="light" selected>淺色圖</option>
+        <option value="light">淺色圖</option>
         <option value="dark">深色圖</option>
-        <option value="osm">街道圖（OSM）</option>
+        <option value="osm" selected>街道圖（OSM）</option>
         <option value="sat">衛星影像</option>
         <option value="topo">地形圖</option>
       </select>
@@ -846,7 +848,7 @@ function initMap(){
   S.map.createPane('landPane');
   S.map.getPane('landPane').style.zIndex = 380;
   L.control.zoom({position:'bottomleft'}).addTo(S.map);
-  S.base=BASES[$('selBase').value||'light']().addTo(S.map);
+  S.base=BASES[$('selBase').value||'osm']().addTo(S.map);
   $('selBase').addEventListener('change',e=>{
     S.map.removeLayer(S.base); S.base=BASES[e.target.value]().addTo(S.map); S.base.bringToBack();
   });
@@ -3115,6 +3117,11 @@ $('keyGo').addEventListener('click',async()=>{
   if(!S.map) boot(); else activate();
 });
 $('keyInput').addEventListener('keydown',e=>{ if(e.key==='Enter') $('keyGo').click(); });
+$('keyDemo').addEventListener('click',()=>{
+  $('keyInput').value='rdec-key-123-45678-011121314';
+  $('keyRemember').checked=false;
+  $('keyGo').click();
+});
 /* 啟動 */
 (function(){
   const need=showKeyGate(false);

@@ -663,6 +663,8 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25)}
     <input type="password" id="keyInput" placeholder="CWA-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" autocomplete="off">
     <div class="err-msg" id="keyErr"></div>
     <button class="btn btn-primary" id="enterBtn" style="margin-top:14px">進入系統</button>
+    <button class="btn btn-ghost" id="demoBtn" style="margin-top:8px;width:100%">🧪 使用測試金鑰試用</button>
+    <p class="sub" style="margin-top:8px;font-size:11px">測試金鑰為官方公開的共用範例金鑰，可能隨時失效或被限流；本頁資料檔較大，建議申請個人金鑰。</p>
   </div>
 </div>
 
@@ -829,6 +831,10 @@ $('enterBtn').onclick=function(){
   $('gate').style.display='none';
 };
 $('keyInput').addEventListener('keydown',function(e){if(e.key==='Enter')$('enterBtn').click();});
+$('demoBtn').onclick=function(){
+  $('keyInput').value='rdec-key-123-45678-011121314';
+  $('enterBtn').click();
+};
 $('keyBtn').onclick=function(){openGate();};
 try{KEY=localStorage.getItem(STORE)||'';}catch(e){}
 if(!KEY)openGate();
