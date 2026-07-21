@@ -16,7 +16,8 @@
 
   /* ===== 頂部工具列 ===== */
   #topbar{flex:0 0 auto;z-index:1500;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;
-    padding:8px 14px;background:rgba(16,24,42,.97);border-bottom:1px solid var(--line)}
+    padding:8px 14px;background:rgba(16,24,42,.55);backdrop-filter:blur(18px) saturate(1.5);
+    -webkit-backdrop-filter:blur(18px) saturate(1.5);border-bottom:1px solid rgba(255,255,255,.08)}
   #topbar h1{font-size:15px;margin:0;white-space:nowrap}
   #topbar .sub{color:var(--muted);font-size:11px;white-space:nowrap}
   #topbar .sp{flex:1}
@@ -38,7 +39,8 @@
     background:linear-gradient(180deg,#0d1626,#0b1220);padding:14px 16px 30px}
 
   /* ===== 時間軸 ===== */
-  #timeline{flex:0 0 auto;background:rgba(16,24,42,.97);border-top:1px solid var(--line);padding:8px 14px 10px}
+  #timeline{flex:0 0 auto;background:rgba(16,24,42,.55);backdrop-filter:blur(18px) saturate(1.5);
+    -webkit-backdrop-filter:blur(18px) saturate(1.5);border-top:1px solid rgba(255,255,255,.08);padding:8px 14px 10px}
   #tlHead{display:flex;align-items:center;gap:10px;margin-bottom:4px}
   #tlHead .t{font-size:11px;font-weight:700;color:var(--muted)}
   #tlHead button{padding:3px 10px;background:var(--chip);border:1px solid var(--line);color:var(--txt);
@@ -57,7 +59,9 @@
   #tlTicks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:0}
 
   /* ===== 地圖圖例（錨定於地圖底部＝時間軸上方，不重疊） ===== */
-  .legend{position:absolute;bottom:10px;left:12px;z-index:1000;background:rgba(16,24,42,.94);
+  .legend{position:absolute;bottom:10px;left:12px;z-index:1000;background:rgba(16,24,42,.55);
+    backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+    box-shadow:0 8px 32px rgba(0,0,0,.35);
     border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:196px;font-size:10px;color:var(--muted)}
   .legend .title{font-size:11px;font-weight:700;color:var(--txt);margin-bottom:5px;display:flex;justify-content:space-between;gap:8px;cursor:pointer;user-select:none}
   .legend #legTgl{transition:transform .2s;color:var(--muted)}
@@ -71,10 +75,12 @@
 
   /* 地圖右上工具 */
   #mapTools{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:6px}
-  #mapTools button{padding:6px 9px;background:rgba(16,24,42,.92);border:1px solid var(--line);color:var(--txt);
+  #mapTools button{padding:6px 9px;background:rgba(16,24,42,.55);backdrop-filter:blur(18px) saturate(1.5);
+    -webkit-backdrop-filter:blur(18px) saturate(1.5);border:1px solid rgba(255,255,255,.1);color:var(--txt);
     border-radius:7px;font-size:11px;cursor:pointer}
   #mapTools button:hover{border-color:var(--accent)}
-  #mapTools select{padding:6px 7px;background:rgba(16,24,42,.92);border:1px solid var(--line);color:var(--txt);
+  #mapTools select{padding:6px 7px;background:rgba(16,24,42,.55);backdrop-filter:blur(18px) saturate(1.5);
+    -webkit-backdrop-filter:blur(18px) saturate(1.5);border:1px solid rgba(255,255,255,.1);color:var(--txt);
     border-radius:7px;font-size:11px;cursor:pointer;max-width:132px}
 
   /* ===== KPI ===== */
@@ -89,7 +95,7 @@
   .kpi-card.k2 .num{color:#f59e0b}.kpi-card.k3 .num{color:#10b981}.kpi-card.k4 .num{color:#ec4899}
 
   /* ===== 詳情卡 ===== */
-  #detailCard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:12px;display:none}
+  #detailCard{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:13px 15px;margin-bottom:12px;display:none;backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5)}
   #detailCard h2{margin:0 0 3px;font-size:16px;line-height:1.4}
   #detailCard .meta{color:var(--muted);font-size:11.5px;margin-bottom:8px;line-height:1.6}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
@@ -111,13 +117,13 @@
   #listHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
   #listHead h3{margin:0;font-size:13px}
   #listHead .n{color:var(--muted);font-size:11px}
-  .evCard{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 12px;margin-bottom:8px;
+  .evCard{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:11px;padding:9px 12px;margin-bottom:8px;
     cursor:pointer;transition:border-color .15s,transform .15s;position:relative;overflow:hidden}
   .evCard::before{content:'';position:absolute;top:0;bottom:0;left:0;width:4px;background:var(--evc,#64748b)}
   .evCard:hover{border-color:var(--accent);transform:translateX(2px)}
   .evCard.sel{border-color:#ffd166;box-shadow:0 0 8px rgba(255,209,102,.3)}
   .evCard.new{animation:newflash 2.4s ease-out}
-  @keyframes newflash{0%{background:#7f1d1d}100%{background:var(--card)}}
+  @keyframes newflash{0%{background:#7f1d1d}100%{background:rgba(255,255,255,.06)}}
   .evRow1{display:flex;align-items:center;gap:8px}
   .magBadge{flex:0 0 auto;width:42px;height:42px;border-radius:50%;display:flex;flex-direction:column;
     align-items:center;justify-content:center;background:var(--chip);border:2px solid var(--evc,#64748b)}

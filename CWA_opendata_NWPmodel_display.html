@@ -13,13 +13,13 @@
 /* ── 全域 ─────────────────────────────────── */
 :root{
   --bg:#080e1c;
-  --surface:rgba(14,22,42,.92);
-  --surface2:rgba(18,28,52,.88);
+  --surface:rgba(10,16,32,.75);
+  --surface2:rgba(14,22,42,.75);
   --border:rgba(56,96,168,.35);
   --border2:rgba(56,96,168,.18);
-  --txt:#dde8f8;
-  --txt2:#8faac8;
-  --txt3:#5878a0;
+  --txt:#eaf2fc;
+  --txt2:#b4c9e2;
+  --txt3:#93adcd;
   --accent:#38bdf8;
   --accent2:#0ea5e9;
   --green:#34d399;
@@ -42,7 +42,8 @@ html,body{height:100%;overflow:hidden;font-family:"Inter","Noto Sans TC",sans-se
   width:330px;
   background:var(--surface);
   border-right:1px solid var(--border);
-  backdrop-filter:blur(18px) saturate(1.4);
+  backdrop-filter:blur(18px) saturate(1.5);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5);
   display:flex;flex-direction:column;
   overflow:hidden;
   transition:transform var(--trans);
@@ -206,7 +207,8 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25)}
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius-sm);
   padding:8px 14px 6px;
-  backdrop-filter:blur(12px);
+  backdrop-filter:blur(18px) saturate(1.5);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5);
   display:none;flex-direction:column;align-items:center;gap:4px;
   min-width:280px;max-width:420px;
 }
@@ -221,7 +223,8 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25)}
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius-sm);
   padding:10px 14px;font-size:12px;color:var(--txt2);
-  backdrop-filter:blur(12px);
+  backdrop-filter:blur(18px) saturate(1.5);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5);
   pointer-events:none;opacity:0;transition:opacity .2s;
   min-width:180px;
 }
@@ -303,7 +306,8 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25)}
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   padding: 12px 20px;
   display: flex;

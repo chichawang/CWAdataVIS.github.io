@@ -25,16 +25,17 @@
 
   /* 控制面板：全高側欄（參考 O-B0055 頁面），收合時整片滑出畫面左側 */
   :root{--panelW:300px}
-  .panel{position:absolute;top:0;left:0;bottom:0;z-index:1000;background:rgba(16,24,42,.94);
-    border-right:1px solid var(--line);padding:14px;width:var(--panelW);backdrop-filter:blur(10px);
-    overflow-y:auto;transition:transform .2s ease}
+  .panel{position:absolute;top:0;left:0;bottom:0;z-index:1000;background:rgba(16,24,42,.55);
+    backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+    border-right:1px solid rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.35);
+    padding:14px;width:var(--panelW);overflow-y:auto;transition:transform .2s ease}
   .panel::-webkit-scrollbar{width:5px}
   .panel::-webkit-scrollbar-track{background:transparent}
   .panel::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
   .panel h1{margin:0 0 2px;font-size:16px}
   .panel .sub{color:var(--muted);font-size:11px;margin-bottom:10px}
   label{display:block;font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600}
-  select,input{width:100%;padding:7px 8px;background:#0d1526;color:var(--txt);border:1px solid var(--line);border-radius:7px;font-size:13px}
+  select,input{width:100%;padding:7px 8px;background:rgba(13,21,38,.55);color:var(--txt);border:1px solid rgba(255,255,255,.12);border-radius:7px;font-size:13px}
   .btns{display:flex;gap:8px;margin-top:10px}
   button{flex:1;padding:7px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600}
   button.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
@@ -55,8 +56,9 @@
   .panel.collapsed{transform:translateX(-100%)}
   /* 面板收合把手：貼於面板右緣，跟隨收合位置移動 */
   #panelTab{position:absolute;top:50%;left:var(--panelW);transform:translateY(-50%);z-index:1001;
-    width:22px;height:56px;padding:0;flex:none;background:rgba(16,24,42,.94);
-    border:1px solid var(--line);border-left:none;border-radius:0 8px 8px 0;
+    width:22px;height:56px;padding:0;flex:none;background:rgba(16,24,42,.55);
+    backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+    border:1px solid rgba(255,255,255,.08);border-left:none;border-radius:0 8px 8px 0;
     color:var(--muted);font-size:12px;cursor:pointer;transition:left .2s ease}
   #panelTab:hover{color:var(--txt);border-color:var(--accent);filter:none}
   #panelTab.collapsed{left:0}
@@ -66,8 +68,9 @@
   .lhead .title{flex:1;margin-bottom:0}
 
   /* 浮動資訊盒（雷達控制 / 讀值） */
-  .fbox{position:absolute;z-index:1000;background:rgba(16,24,42,.94);border:1px solid var(--line);
-    border-radius:12px;padding:10px 12px;backdrop-filter:blur(6px)}
+  .fbox{position:absolute;z-index:1000;background:rgba(16,24,42,.55);border:1px solid rgba(255,255,255,.1);
+    border-radius:12px;padding:10px 12px;backdrop-filter:blur(18px) saturate(1.5);
+    -webkit-backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 8px 32px rgba(0,0,0,.35)}
   .fbox .bhead{display:flex;align-items:center;gap:8px}
   .fbox .bhead .btitle{flex:1;font-size:12px;font-weight:700}
   .fbox.collapsed{padding:8px 10px}
@@ -75,8 +78,10 @@
   input[type=range]{padding:0;height:22px;background:transparent;border:none;accent-color:var(--accent)}
 
   /* colorbar 圖例 */
-  .legend{position:absolute;bottom:22px;right:12px;z-index:1000;background:rgba(16,24,42,.94);
-    border:1px solid var(--line);border-radius:12px;padding:12px 14px;width:230px}
+  .legend{position:absolute;bottom:22px;right:12px;z-index:1000;background:rgba(16,24,42,.55);
+    backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+    border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;width:230px;
+    box-shadow:0 8px 32px rgba(0,0,0,.35)}
   .legend .title{font-size:12px;font-weight:700;margin-bottom:8px}
   .bar{height:14px;border-radius:4px;border:1px solid var(--line)}
   .ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px}

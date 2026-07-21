@@ -38,7 +38,8 @@ button{font-family:inherit}
 /* ── 控制面板（左）：全高側欄，樣式同 10min 觀測頁，半透明＋毛玻璃 ── */
 :root{--panelW:300px}
 #panel{position:absolute;top:0;left:0;bottom:0;z-index:1000;width:var(--panelW);
-  background:rgba(16,24,42,.84);backdrop-filter:blur(10px);border-right:1px solid var(--line);
+  background:rgba(16,24,42,.55);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+  border-right:1px solid rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.35);
   overflow-y:auto;transition:transform .2s ease;font-size:13px}
 #panel::-webkit-scrollbar{width:5px}
 #panel::-webkit-scrollbar-track{background:transparent}
@@ -52,14 +53,15 @@ button{font-family:inherit}
 .panel-head .mini:hover{color:var(--txt);border-color:var(--accent)}
 .panel-body{padding:2px 14px 16px}
 #panelTab{position:absolute;top:50%;left:var(--panelW);transform:translateY(-50%);z-index:1001;
-  width:22px;height:56px;padding:0;background:rgba(16,24,42,.9);border:1px solid var(--line);
+  width:22px;height:56px;padding:0;background:rgba(16,24,42,.55);backdrop-filter:blur(18px) saturate(1.5);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5);border:1px solid rgba(255,255,255,.08);
   border-left:none;border-radius:0 8px 8px 0;color:var(--muted);font-size:12px;cursor:pointer;
   transition:left .2s ease}
 #panelTab:hover{color:var(--txt);border-color:var(--accent)}
 #panelTab.collapsed{left:0}
 .sect{
-  background:var(--card);
-  border:1px solid var(--line);
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
   border-radius:12px;
   padding:12px 14px 14px;
   margin-bottom:14px;
@@ -102,9 +104,9 @@ button{font-family:inherit}
 }
 .sect>.st .dot{width:8px;height:8px;border-radius:50%}
 select,input[type=range]{width:100%}
-select{padding:6px;border-radius:8px;border:1px solid var(--line);background:#0e1830;color:var(--txt);font-size:13px}
+select{padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(14,24,48,.55);color:var(--txt);font-size:13px}
 .chips{display:flex;flex-wrap:wrap;gap:5px}
-.chip{padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:#0e1830;color:var(--muted);
+.chip{padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(14,24,48,.5);color:var(--muted);
   cursor:pointer;font-size:12px;user-select:none}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .chip.dis{opacity:.4;cursor:not-allowed}
@@ -113,16 +115,18 @@ select{padding:6px;border-radius:8px;border:1px solid var(--line);background:#0e
 .note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
 .opac{display:none;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:4px}
 .opac.show{display:flex}
-.btn2{padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:#0e1830;color:var(--txt);
+.btn2{padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(14,24,48,.5);color:var(--txt);
   font-size:12px;cursor:pointer}
 .btn2:hover{border-color:var(--accent)}
 
 /* ── 時間軸（下） ─────────────────────── */
 #timebar{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;z-index:1000;
-  width:min(860px,calc(100% - 20px));background:var(--card);backdrop-filter:blur(6px);
-  border:1px solid var(--line);border-radius:12px;padding:8px 14px}
+  width:min(860px,calc(100% - 20px));background:rgba(16,24,42,.55);
+  backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35)}
 #timebar .tb-top{display:flex;align-items:center;gap:10px}
-#tPlay{width:34px;height:30px;border-radius:8px;border:1px solid var(--line);background:#0e1830;
+#tPlay{width:34px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(14,24,48,.5);
   color:var(--txt);font-size:14px;cursor:pointer;flex:none}
 #tPlay:hover{border-color:var(--accent)}
 #tLabel{font-size:14px;font-weight:700;min-width:150px;flex:none}
@@ -133,8 +137,10 @@ select{padding:6px;border-radius:8px;border:1px solid var(--line);background:#0e
 
 /* ── 圖例（右下） ─────────────────────── */
 #legend{position:absolute;right:10px;bottom:10px;z-index:1000;max-width:250px;max-height:55%;
-  overflow-y:auto;background:var(--card);backdrop-filter:blur(6px);border:1px solid var(--line);
-  border-radius:12px;padding:8px 12px;font-size:12px}
+  overflow-y:auto;background:rgba(16,24,42,.55);
+  backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 12px;font-size:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35)}
 #legend.collapsed .lg-body{display:none}
 #legend .lg-head{font-weight:700;cursor:pointer;user-select:none;display:flex;gap:8px}
 #legend .lg-head .tgl{margin-left:auto;color:var(--muted)}
@@ -149,11 +155,13 @@ select{padding:6px;border-radius:8px;border:1px solid var(--line);background:#0e
 
 /* ── 右上按鈕列與狀態 ─────────────────── */
 #toprt{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-.tbtn{padding:8px 13px;border-radius:10px;border:1px solid var(--line);background:var(--card);
-  backdrop-filter:blur(6px);color:var(--txt);font-size:13px;font-weight:700;cursor:pointer}
+.tbtn{padding:8px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(16,24,42,.55);
+  backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+  color:var(--txt);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,.35)}
 .tbtn:hover{border-color:var(--accent)}
-#status{font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--line);
-  border-radius:8px;padding:4px 9px;max-width:260px;text-align:right}
+#status{font-size:11px;color:var(--muted);background:rgba(16,24,42,.55);
+  backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px 9px;max-width:260px;text-align:right}
 #toast{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:3000;display:none;
   background:#7c2d12ee;border:1px solid #ea580c;color:#fed7aa;padding:8px 16px;border-radius:10px;font-size:13px;max-width:80%}
 
